@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – Anaar</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL  = 'https://lnlfmpyznaimyzrybimq.supabase.co';
+    const SUPABASE_ANON = 'sb_publishable_uZtjIPPj-lOpWfSu-x6BbA_2qT6aIP8';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red:   #8B1A1A;
+      --red2:  #B22222;
+      --gold:  #FFD700;
+      --dark:  #1a1a1a;
+      --white: #ffffff;
+      --green: #27ae60;
+      --error: #e74c3c;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, var(--red) 0%, var(--red2) 60%, #5a0000 100%);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%; max-width: 420px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: var(--red);
+      padding: 2.2rem 2rem 1.8rem;
+      text-align: center;
+    }
+    .logo {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1.8rem; color: var(--red);
+      margin: 0 auto 1rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .card-header h1 { color: var(--white); font-size: 1.6rem; font-weight: 800; }
+    .card-header p  { color: rgba(255,255,255,0.7); font-size: 0.85rem; margin-top: .3rem; }
+
+    .card-body { padding: 2rem; }
+
+    /* Alert */
+    .alert {
+      border-radius: 10px; padding: .75rem 1rem;
+      font-size: 0.83rem; font-weight: 600;
+      margin-bottom: 1.2rem; display: none; line-height: 1.5;
+    }
+    .alert.error   { background: #fdecea; color: var(--error); display: block; }
+    .alert.success { background: #eafaf1; color: var(--green);  display: block; }
+
+    /* Fields */
+    .field { margin-bottom: 1.1rem; }
+    label {
+      display: block; font-size: 0.82rem; font-weight: 600;
+      color: #444; margin-bottom: .4rem;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap .icon {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 1rem; pointer-events: none;
+    }
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%; padding: .75rem 1rem .75rem 2.6rem;
+      border: 1.5px solid #e0e0e0; border-radius: 10px;
+      font-size: 0.93rem; color: var(--dark);
+      outline: none; transition: border .2s, box-shadow .2s;
+    }
+    input:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(139,26,26,0.08);
+    }
+    .toggle-pw {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      cursor: pointer; font-size: 1rem; user-select: none; opacity: .55;
+      transition: opacity .2s;
+    }
+    .toggle-pw:hover { opacity: 1; }
+
+    /* Options row */
+    .options-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.4rem; font-size: 0.8rem;
+    }
+    .remember { display: flex; align-items: center; gap: .4rem; color: #555; cursor: pointer; }
+    .remember input { accent-color: var(--red); cursor: pointer; }
+    .forgot { color: var(--red); font-weight: 600; text-decoration: none; font-size: 0.8rem; }
+    .forgot:hover { text-decoration: underline; }
+
+    /* Buttons */
+    .btn-primary {
+      display: block; width: 100%;
+      background: var(--red); color: var(--white);
+      border: none; border-radius: 12px;
+      padding: .9rem; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s, transform .1s;
+    }
+    .btn-primary:hover    { opacity: .88; }
+    .btn-primary:active   { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .back-btn {
+      background: none; border: none; color: var(--red);
+      font-size: 0.83rem; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: .3rem;
+      margin-bottom: 1.2rem; padding: 0;
+    }
+    .back-btn:hover { text-decoration: underline; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+
+    /* Views */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .sent-box { text-align: center; padding: .5rem 0; }
+    .sent-box .big { font-size: 3.5rem; margin-bottom: 1rem; }
+    .sent-box h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: .5rem; color: var(--dark); }
+    .sent-box p  { font-size: .85rem; color: #666; line-height: 1.6; margin-bottom: 1.4rem; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <div class="logo">A</div>
+    <h1 id="hdr-title">Welcome Back</h1>
+    <p id="hdr-sub">Sign in to your Anaar account</p>
+  </div>
+
+  <div class="card-body">
+
+    <!-- LOGIN -->
+    <div class="view active" id="view-login">
+      <div id="alert-login" class="alert"></div>
+
+      <div class="field">
+        <label>Email Address</label>
+        <div class="input-wrap">
+          <span class="icon">✉️</span>
+          <input type="email" id="email" placeholder="you@example.com"
+                 autocomplete="email" onkeydown="if(event.key==='Enter') signIn()" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <span class="icon">🔒</span>
+          <input type="password" id="password" placeholder="Your password"
+                 autocomplete="current-password" onkeydown="if(event.key==='Enter') signIn()" />
+          <span class="toggle-pw" onclick="togglePw()">👁️</span>
+        </div>
+      </div>
+
+      <div class="options-row">
+        <label class="remember">
+          <input type="checkbox" id="remember" /> Remember me
+        </label>
+        <a href="#" class="forgot" onclick="showView('reset'); return false;">Forgot password?</a>
+      </div>
+
+      <button class="btn-primary" id="btn-login" onclick="signIn()">Sign In</button>
+
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div class="view" id="view-reset">
+      <button class="back-btn" onclick="showView('login')">← Back to Sign In</button>
+      <div id="alert-reset" class="alert"></div>
+      <p style="font-size:.87rem;color:#555;line-height:1.6;margin-bottom:1.2rem">
+        Enter your email and we'll send a link to reset your password.
+      </p>
+      <div class="field">
+        <label>Email Address</label>
+        <div class="input-wrap">
+          <span class="icon">✉️</span>
+          <input type="email" id="reset-email" placeholder="you@example.com"
+                 onkeydown="if(event.key==='Enter') sendReset()" />
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-reset" onclick="sendReset()">Send Reset Link</button>
+    </div>
+
+    <!-- RESET EMAIL SENT -->
+    <div class="view" id="view-sent">
+      <div class="sent-box">
+        <div class="big">📧</div>
+        <h3>Check your inbox</h3>
+        <p>A password reset link has been sent to<br/><strong id="sent-email"></strong>.<br/>Click the link to set a new password.</p>
+        <button class="btn-primary" onclick="showView('login')">Back to Sign In</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── View switching ─────────────────────────────────────
+  const headers = {
+    login: ['Welcome Back',     'Sign in to your Anaar account'],
+    reset: ['Reset Password',   'We\'ll email you a reset link'],
+    sent:  ['Email Sent',       'Check your inbox']
+  };
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.getElementById('hdr-title').textContent = headers[name][0];
+    document.getElementById('hdr-sub').textContent   = headers[name][1];
+  }
+
+  // ── Toggle password visibility ─────────────────────────
+  function togglePw() {
+    const inp = document.getElementById('password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  // ── Alerts ─────────────────────────────────────────────
+  function showAlert(view, msg, type) {
+    const el = document.getElementById('alert-' + view);
+    el.textContent = msg; el.className = 'alert ' + type;
+  }
+  function clearAlert(view) {
+    const el = document.getElementById('alert-' + view);
+    el.className = 'alert'; el.textContent = '';
+  }
+
+  // ── Remember Me ────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('anaar_email');
+    if (saved) {
+      document.getElementById('email').value = saved;
+      document.getElementById('remember').checked = true;
+    }
+  });
+
+  // ── Sign In ────────────────────────────────────────────
+  async function signIn() {
+    clearAlert('login');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const remember = document.getElementById('remember').checked;
+
+    if (!email)    { showAlert('login', 'Please enter your email address.', 'error'); return; }
+    if (!password) { showAlert('login', 'Please enter your password.', 'error'); return; }
+
+    const btn = document.getElementById('btn-login');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Signing in…';
+
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      btn.disabled = false; btn.textContent = 'Sign In';
+      const msg = error.message.includes('Invalid login credentials')
+        ? 'Incorrect email or password. Please try again.'
+        : error.message.includes('Email not confirmed')
+        ? '⚠️ Please verify your email first. Check your inbox for the confirmation link.'
+        : error.message;
+      showAlert('login', msg, 'error');
+      return;
+    }
+
+    // Save email if Remember Me checked
+    if (remember) localStorage.setItem('anaar_email', email);
+    else localStorage.removeItem('anaar_email');
+
+    btn.innerHTML = '✅ Success! Redirecting…';
+    setTimeout(() => { window.location.href = 'index.html'; }, 800);
+  }
+
+  // ── Send Reset Link ────────────────────────────────────
+  async function sendReset() {
+    clearAlert('reset');
+    const email = document.getElementById('reset-email').value.trim();
+    if (!email) { showAlert('reset', 'Please enter your email address.', 'error'); return; }
+
+    const btn = document.getElementById('btn-reset');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending…';
+
+    const redirectTo = window.location.origin
+      + window.location.pathname.replace('login.html', '')
+      + 'index.html';
+
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+
+    btn.disabled = false; btn.textContent = 'Send Reset Link';
+
+    if (error) { showAlert('reset', error.message, 'error'); return; }
+
+    document.getElementById('sent-email').textContent = email;
+    showView('sent');
+  }
+</script>
+
+</body>
+</html>

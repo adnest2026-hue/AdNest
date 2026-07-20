@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viewer Dashboard – Anaar</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL  = 'https://lnlfmpyznaimyzrybimq.supabase.co';
+    const SUPABASE_ANON = 'sb_publishable_uZtjIPPj-lOpWfSu-x6BbA_2qT6aIP8';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red:   #8B1A1A; --red2: #B22222; --gold: #FFD700;
+      --dark:  #1a1a1a; --gray: #f4f4f4; --white: #ffffff;
+      --green: #27ae60; --shadow: 0 4px 20px rgba(0,0,0,0.10);
+    }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray); color: var(--dark); }
+
+    /* ── TOP NAV ── */
+    .topnav {
+      background: var(--red); height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    }
+    .topnav .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .topnav .logo {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--gold); display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1rem; color: var(--red);
+    }
+    .topnav .brand-name { color: #fff; font-weight: 700; font-size: 1.1rem; }
+    .topnav .nav-right  { display: flex; align-items: center; gap: 1rem; }
+    .topnav .coin-chip  {
+      background: var(--gold); color: var(--red); border-radius: 20px;
+      padding: 4px 14px; font-weight: 800; font-size: 0.85rem;
+    }
+    .topnav .btn-logout {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+      padding: 5px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    .topnav .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; min-height: calc(100vh - 60px); }
+
+    /* ── SIDEBAR ── */
+    .sidebar { width: 220px; background: var(--dark); padding: 1.5rem 0; flex-shrink: 0; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: .75rem 1.5rem; color: rgba(255,255,255,.65);
+      font-size: .88rem; font-weight: 500; cursor: pointer;
+      transition: all .2s; border-left: 3px solid transparent;
+      text-decoration: none;
+    }
+    .sidebar-item:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .sidebar-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(255,215,0,.07); }
+    .sidebar-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-divider { height: 1px; background: rgba(255,255,255,.08); margin: .8rem 1.5rem; }
+
+    /* ── MAIN ── */
+    .main { flex: 1; padding: 2rem; overflow-y: auto; }
+    .page-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 1.5rem; }
+
+    /* ── STAT CARDS ── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--white); border-radius: 14px; padding: 1.2rem 1.5rem; box-shadow: var(--shadow); }
+    .stat-card .s-label { font-size: .78rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .stat-card .s-value { font-size: 1.7rem; font-weight: 900; color: var(--red); margin: .3rem 0 0; }
+    .stat-card .s-sub   { font-size: .75rem; color: #aaa; }
+
+    /* ── PANEL ── */
+    .panel { background: var(--white); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 1.5rem; }
+    .panel-head { background: var(--red); color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+    .panel-head h3 { font-size: 1rem; font-weight: 700; }
+    .panel-body { padding: 1.5rem; }
+
+    /* ── AD CARDS ── */
+    .ads-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 1.2rem; }
+    .ad-card  { border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .2s; }
+    .ad-card:hover { transform: translateY(-4px); }
+    .ad-card .ad-img {
+      width: 100%; height: 160px; object-fit: cover; display: block;
+      background: linear-gradient(135deg,var(--red),var(--red2));
+    }
+    .ad-img-placeholder {
+      width: 100%; height: 160px;
+      background: linear-gradient(135deg,var(--red),#5a0000);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+    }
+    .ad-card .ad-body { padding: 1rem; background: var(--white); }
+    .ad-card .ad-title { font-weight: 700; font-size: .92rem; margin-bottom: .4rem; }
+    .ad-card .ad-meta  { font-size: .78rem; color: #888; margin-bottom: .8rem; }
+    .ad-card .ad-reward {
+      background: #fff8e1; border-radius: 8px;
+      padding: .4rem .8rem; font-size: .8rem; font-weight: 700;
+      color: var(--red); display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: .8rem;
+    }
+    .btn-watch {
+      display: block; width: 100%; background: var(--red); color: #fff;
+      border: none; border-radius: 8px; padding: .6rem;
+      font-weight: 700; font-size: .85rem; cursor: pointer; transition: opacity .2s;
+    }
+    .btn-watch:hover { opacity: .88; }
+    .btn-watch.watched { background: var(--green); cursor: default; }
+
+    /* ── WALLET CARD ── */
+    .wallet-hero {
+      background: linear-gradient(135deg,var(--red),var(--red2));
+      border-radius: 16px; padding: 2rem; color: #fff;
+      text-align: center; margin-bottom: 1.5rem;
+    }
+    .wallet-hero .w-coins { font-size: 2.8rem; font-weight: 900; color: var(--gold); }
+    .wallet-hero .w-cash  { font-size: 1.1rem; opacity: .85; margin-top: .3rem; }
+    .wallet-hero .w-label { font-size: .82rem; opacity: .65; margin-bottom: .5rem; }
+
+    /* ── HISTORY TABLE ── */
+    .hist-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .hist-table th { background: #f9f9f9; padding: .7rem 1rem; text-align: left; font-weight: 700; color: #555; font-size: .78rem; text-transform: uppercase; }
+    .hist-table td { padding: .7rem 1rem; border-bottom: 1px solid #f0f0f0; }
+    .hist-table tr:last-child td { border: none; }
+    .earn-badge { color: var(--green); font-weight: 700; }
+
+    /* ── EMPTY STATE ── */
+    .empty { text-align: center; padding: 3rem 1rem; color: #aaa; }
+    .empty .e-icon { font-size: 3rem; margin-bottom: .8rem; }
+
+    /* ── VIEWS ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── TOAST ── */
+    #toast {
+      display:none; position:fixed; bottom:1.5rem; right:1.5rem;
+      background:var(--dark); color:#fff; padding:.8rem 1.2rem;
+      border-radius:10px; font-size:.85rem; font-weight:600;
+      box-shadow:0 8px 24px rgba(0,0,0,0.25); z-index:9999;
+      border-left:4px solid var(--gold);
+    }
+
+    @media(max-width:700px){
+      .sidebar { display:none; }
+      .main { padding:1rem; }
+      .stats-row { grid-template-columns:1fr 1fr; }
+      .ads-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <a class="brand" href="index.html">
+    <div class="logo">A</div>
+    <span class="brand-name">Anaar · Viewer</span>
+  </a>
+  <div class="nav-right">
+    <div class="coin-chip">🪙 <span id="nav-coins">0</span> coins</div>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-item active" onclick="switchView('ads', this)">
+      <span class="sidebar-icon">📺</span> Watch Ads
+    </div>
+    <div class="sidebar-item" onclick="switchView('wallet', this)">
+      <span class="sidebar-icon">🪙</span> My Coins
+    </div>
+    <div class="sidebar-item" onclick="switchView('history', this)">
+      <span class="sidebar-icon">📜</span> History
+    </div>
+    <div class="sidebar-divider"></div>
+    <a class="sidebar-item" href="index.html">
+      <span class="sidebar-icon">🏠</span> Home
+    </a>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="s-label">Total Coins</div>
+        <div class="s-value" id="stat-coins">0</div>
+        <div class="s-sub">Earned so far</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">Cash Value</div>
+        <div class="s-value" id="stat-cash">₹0.00</div>
+        <div class="s-sub">Redeemable</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">Ads Watched</div>
+        <div class="s-value" id="stat-watched">0</div>
+        <div class="s-sub">All time</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">Available Ads</div>
+        <div class="s-value" id="stat-avail">0</div>
+        <div class="s-sub">Watch &amp; earn</div>
+      </div>
+    </div>
+
+    <!-- WATCH ADS VIEW -->
+    <div class="view active" id="view-ads">
+      <div class="page-title">📺 Watch Ads &amp; Earn Coins</div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Active Ads</h3>
+          <span style="font-size:.82rem;opacity:.8">Tap an ad to earn coins</span>
+        </div>
+        <div class="panel-body">
+          <div class="ads-grid" id="ads-grid">
+            <div class="empty"><div class="e-icon">📭</div><p>Loading ads…</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WALLET VIEW -->
+    <div class="view" id="view-wallet">
+      <div class="page-title">🪙 My Coins</div>
+      <div class="wallet-hero">
+        <div class="w-label">Total Coins Earned</div>
+        <div class="w-coins">🪙 <span id="wallet-coins">0</span></div>
+        <div class="w-cash">≈ ₹<span id="wallet-cash">0.00</span> Cash Value</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Coin Rates</h3></div>
+        <div class="panel-body">
+          <table class="hist-table">
+            <thead><tr><th>Ad Type</th><th>Coins per View</th><th>Cash Value</th></tr></thead>
+            <tbody>
+              <tr><td>🖼️ Image Slide</td><td>300 coins</td><td>0.15 paisa</td></tr>
+              <tr><td>🎬 Video Ad</td><td>400 coins</td><td>0.20 paisa</td></tr>
+              <tr><td>📲 Social Media</td><td>600 coins</td><td>0.30 paisa</td></tr>
+              <tr><td>📱 App &amp; Website</td><td>1000 coins</td><td>0.50 paisa</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div class="view" id="view-history">
+      <div class="page-title">📜 Coin History</div>
+      <div class="panel">
+        <div class="panel-head"><h3>Earn History</h3></div>
+        <div class="panel-body" style="padding:0;overflow-x:auto">
+          <table class="hist-table">
+            <thead><tr><th>Date</th><th>Ad</th><th>Coins</th><th>Type</th></tr></thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="4" style="text-align:center;color:#aaa;padding:2rem">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  let currentUser = null;
+  let watchedAds  = new Set();
+
+  // ── Auth guard ────────────────────────────────────────
+  async function init() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) { window.location.href = 'login.html'; return; }
+    currentUser = user;
+    loadWallet();
+    loadAds();
+  }
+
+  // ── View switching ────────────────────────────────────
+  function switchView(name, el) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    if (el) el.classList.add('active');
+    if (name === 'history') loadHistory();
+  }
+
+  // ── Load wallet via RPC ──────────────────────────────
+  async function loadWallet() {
+    const { data } = await db.rpc('get_viewer_stats', { p_user_id: currentUser.id });
+    const coins = data?.total_coins || 0;
+    const cash  = data?.cash_value  || 0;
+    document.getElementById('stat-coins').textContent    = Number(coins).toLocaleString();
+    document.getElementById('stat-cash').textContent     = '₹' + parseFloat(cash).toFixed(2);
+    document.getElementById('stat-watched').textContent  = data?.ads_watched  || 0;
+    document.getElementById('stat-avail').textContent    = data?.available_ads || 0;
+    document.getElementById('nav-coins').textContent     = Number(coins).toLocaleString();
+    document.getElementById('wallet-coins').textContent  = Number(coins).toLocaleString();
+    document.getElementById('wallet-cash').textContent   = parseFloat(cash).toFixed(2);
+  }
+
+  // ── Load active ads ───────────────────────────────────
+  async function loadAds() {
+    const { data: viewed } = await db.from('ad_views').select('ad_id').eq('viewer_id', currentUser.id);
+    watchedAds = new Set((viewed||[]).map(v => v.ad_id));
+
+    const { data: ads } = await db.from('ads').select('*').eq('status', 'active');
+    const list = ads || [];
+
+    document.getElementById('stat-avail').textContent  = list.filter(a => !watchedAds.has(a.id)).length;
+    document.getElementById('stat-watched').textContent = watchedAds.size;
+
+    const grid = document.getElementById('ads-grid');
+    if (list.length === 0) {
+      grid.innerHTML = '<div class="empty"><div class="e-icon">📭</div><p>No active ads right now. Check back soon!</p></div>';
+      return;
+    }
+
+    const coinMap = { image: 300, video: 400, social_link: 600, app_website: 1000 };
+    const emojiMap = { image: '🖼️', video: '🎬', social_link: '📲', app_website: '📱' };
+
+    grid.innerHTML = list.map(ad => {
+      const watched  = watchedAds.has(ad.id);
+      const coins    = coinMap[ad.ad_type] || 300;
+      const emoji    = emojiMap[ad.ad_type] || '📢';
+      const showWA   = ad.whatsapp_number && (ad.ad_type === 'image' || ad.ad_type === 'video');
+      const waNum    = showWA ? ad.whatsapp_number.replace(/\D/g,'') : '';
+      const waBtn    = showWA
+        ? `<a href="https://wa.me/${waNum}" target="_blank" rel="noopener"
+              style="display:flex;align-items:center;justify-content:center;gap:6px;
+                     background:#25D366;color:#fff;border-radius:8px;padding:.55rem;
+                     font-weight:700;font-size:.82rem;text-decoration:none;margin-top:.6rem;
+                     transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+             💬 WhatsApp Business
+           </a>` : '';
+      return `
+        <div class="ad-card">
+          <div class="ad-img-placeholder">${emoji}</div>
+          <div class="ad-body">
+            <div class="ad-title">${ad.title}</div>
+            <div class="ad-meta">${ad.ad_type.replace('_',' ')} · ${ad.target_area}</div>
+            <div class="ad-reward">
+              <span>🪙 Earn ${coins} coins</span>
+              <span style="color:#888;font-weight:400">≈ ${(coins*0.0005).toFixed(4)} ₹</span>
+            </div>
+            <button class="btn-watch ${watched ? 'watched' : ''}"
+              onclick="${watched ? '' : `watchAd('${ad.id}', ${coins}, this)`}"
+              ${watched ? 'disabled' : ''}>
+              ${watched ? '✅ Watched' : '▶ Watch & Earn'}
+            </button>
+            ${waBtn}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Watch ad & earn coins ─────────────────────────────
+  async function watchAd(adId, coins, btn) {
+    btn.disabled = true; btn.textContent = 'Processing…';
+    const { data, error } = await db.rpc('earn_coins_for_view', {
+      p_viewer_id: currentUser.id, p_ad_id: adId, p_coins: coins
+    });
+    if (error) {
+      btn.disabled = false; btn.textContent = '▶ Watch & Earn';
+      showToast('Error: ' + error.message); return;
+    }
+    if (data && !data.success) {
+      btn.disabled = false; btn.textContent = '▶ Watch & Earn';
+      showToast(data.message || 'Could not earn coins.'); return;
+    }
+    btn.className = 'btn-watch watched'; btn.textContent = '✅ Watched';
+    watchedAds.add(adId);
+    showToast('🪙 +' + coins + ' coins earned!');
+    loadWallet();
+  }
+
+  // ── Load history ──────────────────────────────────────
+  async function loadHistory() {
+    const { data } = await db.from('coin_transactions')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false }).limit(50);
+    const tbody = document.getElementById('history-tbody');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:2rem">No history yet. Watch ads to earn coins!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(t => `
+      <tr>
+        <td>${new Date(t.created_at).toLocaleDateString('en-IN')}</td>
+        <td>${t.description || '-'}</td>
+        <td class="earn-badge">+${t.coins}</td>
+        <td>${t.type}</td>
+      </tr>`).join('');
+  }
+
+  // ── Toast ─────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3000);
+  }
+
+  // ── Logout ────────────────────────────────────────────
+  async function logout() {
+    await db.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advertiser Dashboard – Anaar</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL  = 'https://lnlfmpyznaimyzrybimq.supabase.co';
+    const SUPABASE_ANON = 'sb_publishable_uZtjIPPj-lOpWfSu-x6BbA_2qT6aIP8';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red:   #8B1A1A; --red2: #B22222; --gold: #FFD700;
+      --dark:  #1a1a1a; --gray: #f4f4f4; --white: #ffffff;
+      --green: #27ae60; --shadow: 0 4px 20px rgba(0,0,0,0.10);
+    }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray); color: var(--dark); }
+
+    /* ── TOP NAV ── */
+    .topnav {
+      background: var(--red); height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    }
+    .topnav .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .topnav .logo {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--gold); display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1rem; color: var(--red);
+    }
+    .topnav .brand-name { color: #fff; font-weight: 700; font-size: 1.1rem; }
+    .topnav .nav-right { display: flex; align-items: center; gap: 1rem; }
+    .topnav .balance-chip {
+      background: var(--gold); color: var(--red); border-radius: 20px;
+      padding: 4px 14px; font-weight: 800; font-size: 0.85rem;
+    }
+    .topnav .btn-logout {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+      padding: 5px 14px; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: background .2s;
+    }
+    .topnav .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; min-height: calc(100vh - 60px); }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 220px; background: var(--dark); padding: 1.5rem 0;
+      flex-shrink: 0;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: .75rem 1.5rem; color: rgba(255,255,255,0.65);
+      font-size: 0.88rem; font-weight: 500; cursor: pointer;
+      transition: all .2s; border-left: 3px solid transparent;
+      text-decoration: none;
+    }
+    .sidebar-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .sidebar-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(255,215,0,0.07); }
+    .sidebar-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-divider { height: 1px; background: rgba(255,255,255,0.08); margin: .8rem 1.5rem; }
+
+    /* ── MAIN ── */
+    .main { flex: 1; padding: 2rem; overflow-y: auto; }
+
+    /* ── PAGE TITLE ── */
+    .page-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--dark); }
+
+    /* ── STAT CARDS ── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--white); border-radius: 14px;
+      padding: 1.2rem 1.5rem; box-shadow: var(--shadow);
+    }
+    .stat-card .s-label { font-size: 0.78rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .stat-card .s-value { font-size: 1.7rem; font-weight: 900; color: var(--red); margin: .3rem 0 0; }
+    .stat-card .s-sub   { font-size: 0.75rem; color: #aaa; }
+
+    /* ── PANEL ── */
+    .panel { background: var(--white); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 1.5rem; }
+    .panel-head {
+      background: var(--red); color: #fff;
+      padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-head h3 { font-size: 1rem; font-weight: 700; }
+    .panel-body { padding: 1.5rem; }
+
+    /* ── UPLOAD AREA ── */
+    .upload-area {
+      border: 2px dashed var(--gold); border-radius: 12px;
+      padding: 2rem; text-align: center; background: #fffdf0;
+      cursor: pointer; transition: border-color .2s, background .2s;
+      margin-bottom: 1rem;
+    }
+    .upload-area:hover { border-color: var(--red); background: #fff5f5; }
+    .upload-area .u-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+    .upload-area p { font-size: 0.85rem; color: #666; }
+    .upload-area img { max-width: 100%; max-height: 180px; border-radius: 8px; margin-top: .8rem; display: none; }
+
+    /* ── FORM ROWS ── */
+    .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 140px; }
+    .form-group label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .35rem; }
+    .form-group select,
+    .form-group input {
+      width: 100%; padding: .6rem .9rem;
+      border: 1.5px solid #e0e0e0; border-radius: 8px;
+      font-size: .87rem; color: var(--dark); outline: none;
+      transition: border .2s;
+    }
+    .form-group select:focus,
+    .form-group input:focus { border-color: var(--red); }
+
+    /* ── COST BOX ── */
+    .cost-box {
+      background: var(--red); color: #fff; border-radius: 10px;
+      padding: .8rem 1.2rem; display: flex; justify-content: space-between;
+      font-weight: 700; margin-bottom: 1rem; font-size: .9rem;
+    }
+
+    /* ── SUBMIT BTN ── */
+    .btn-submit {
+      display: block; width: 100%; background: var(--gold); color: var(--red);
+      border: none; border-radius: 10px; padding: .85rem;
+      font-weight: 800; font-size: 1rem; cursor: pointer; transition: opacity .2s;
+    }
+    .btn-submit:hover { opacity: .88; }
+
+    /* ── ADS TABLE ── */
+    .ads-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .ads-table th { background: #f9f9f9; padding: .7rem 1rem; text-align: left; font-weight: 700; color: #555; font-size: .78rem; text-transform: uppercase; }
+    .ads-table td { padding: .7rem 1rem; border-bottom: 1px solid #f0f0f0; }
+    .ads-table tr:last-child td { border: none; }
+    .status-badge {
+      display: inline-block; border-radius: 20px;
+      padding: 2px 10px; font-size: .75rem; font-weight: 700;
+    }
+    .status-active  { background: #e8f8f0; color: var(--green); }
+    .status-pending { background: #fff8e1; color: #f39c12; }
+    .status-paused  { background: #f0f0f0; color: #888; }
+
+    /* ── ANALYTICS ── */
+    .analytics-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+    .metric-card {
+      background: var(--gray); border-radius: 10px;
+      padding: 1rem; text-align: center;
+    }
+    .metric-num { font-size: 1.5rem; font-weight: 900; color: var(--red); }
+    .metric-lbl { font-size: .72rem; color: #888; margin-top: 3px; }
+
+    /* ── HIDDEN VIEWS ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── ALERT ── */
+    .alert { border-radius: 8px; padding: .7rem 1rem; font-size: .83rem; font-weight: 600; margin-bottom: 1rem; display: none; }
+    .alert.success { background: #eafaf1; color: var(--green); display: block; }
+    .alert.error   { background: #fdecea; color: #e74c3c; display: block; }
+
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .main { padding: 1rem; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .analytics-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <a class="brand" href="index.html">
+    <div class="logo">A</div>
+    <span class="brand-name">Anaar · Advertiser</span>
+  </a>
+  <div class="nav-right">
+    <div class="balance-chip">💰 ₹<span id="wallet-bal">0.00</span></div>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-item active" onclick="switchView('post')">
+      <span class="sidebar-icon">📤</span> Post Ad
+    </div>
+    <div class="sidebar-item" onclick="switchView('myads')">
+      <span class="sidebar-icon">📋</span> My Ads
+    </div>
+    <div class="sidebar-item" onclick="switchView('analytics')">
+      <span class="sidebar-icon">📊</span> Analytics
+    </div>
+    <div class="sidebar-item" onclick="switchView('wallet')">
+      <span class="sidebar-icon">💳</span> Wallet
+    </div>
+    <div class="sidebar-divider"></div>
+    <a class="sidebar-item" href="index.html">
+      <span class="sidebar-icon">🏠</span> Home
+    </a>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="s-label">Total Ads</div>
+        <div class="s-value" id="stat-ads">0</div>
+        <div class="s-sub">All campaigns</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">Total Views</div>
+        <div class="s-value" id="stat-views">0</div>
+        <div class="s-sub">Delivered</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">Active Ads</div>
+        <div class="s-value" id="stat-active">0</div>
+        <div class="s-sub">Running now</div>
+      </div>
+      <div class="stat-card">
+        <div class="s-label">Total Spent</div>
+        <div class="s-value" id="stat-spent">₹0</div>
+        <div class="s-sub">All time</div>
+      </div>
+    </div>
+
+    <!-- POST AD VIEW -->
+    <div class="view active" id="view-post">
+      <div class="page-title">📤 Post New Ad</div>
+      <div class="panel">
+        <div class="panel-head"><h3>🖼️ Image Slide Ad – ₹0.30 / 1K Views</h3></div>
+        <div class="panel-body">
+          <div id="alert-post" class="alert"></div>
+
+          <!-- Image/Video Upload (image & video only) -->
+          <div class="upload-area" id="upload-area" onclick="document.getElementById('img-input').click()">
+            <input type="file" id="img-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewImg(event)" />
+            <div id="upload-placeholder">
+              <div class="u-icon">🖼️</div>
+              <p><strong>Upload Image Slide</strong></p>
+              <p>JPG · PNG · WEBP &nbsp;|&nbsp; Max 5MB</p>
+              <p style="margin-top:.4rem;font-size:.78rem;color:#bbb">Click or drag &amp; drop</p>
+            </div>
+            <img id="img-preview" alt="Preview" />
+          </div>
+
+          <!-- Link Paste (social media & app/website only) -->
+          <div id="link-field" style="display:none;margin-bottom:1rem;">
+            <div class="form-group">
+              <label id="link-label">Paste Your Link</label>
+              <input type="url" id="ad-link" placeholder="https://" style="padding:.7rem 1rem;border:1.5px solid #e0e0e0;border-radius:8px;width:100%;font-size:.9rem;outline:none;" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='#e0e0e0'" />
+              <div id="link-hint" style="font-size:.75rem;color:#888;margin-top:.3rem;"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Ad Title</label>
+              <input type="text" id="ad-title" placeholder="e.g. Grand Sale at My Shop" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Ad Type</label>
+              <select id="ad-type" onchange="recalc(); toggleWA()">
+                <option value="0.30">Image Slide – ₹0.30/1K</option>
+                <option value="0.50">Video – ₹0.50/1K</option>
+                <option value="0.80">Social Media – ₹0.80/1K</option>
+                <option value="2.00">App/Web – ₹2.00/install</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Views / Installs</label>
+              <input type="number" id="ad-views" value="5000" min="1000" step="1000" oninput="recalc()" />
+            </div>
+            <div class="form-group">
+              <label>Target Area</label>
+              <select id="ad-target">
+                <option value="pincode">Pincode</option>
+                <option value="district">District</option>
+                <option value="state">State</option>
+                <option value="nationwide">Nationwide</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Optional WhatsApp (image & video only) -->
+          <div id="wa-field" class="form-row" style="display:none">
+            <div class="form-group">
+              <label>WhatsApp Number <span style="color:#aaa;font-weight:400">(optional)</span></label>
+              <input type="tel" id="ad-whatsapp" placeholder="+91 98765 43210"
+                     style="border-color:#25D366" />
+              <div style="font-size:.75rem;color:#888;margin-top:.3rem">
+                💬 Viewers can tap to contact you directly on WhatsApp
+              </div>
+            </div>
+          </div>
+
+          <div class="cost-box">
+            <span>Estimated Cost + 18% GST</span>
+            <span id="cost-display">₹1.50 + ₹0.27 = ₹1.77</span>
+          </div>
+
+          <button class="btn-submit" onclick="submitAd()">🚀 Submit Ad for Review</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY ADS VIEW -->
+    <div class="view" id="view-myads">
+      <div class="page-title">📋 My Ads</div>
+      <div class="panel">
+        <div class="panel-head"><h3>All Campaigns</h3></div>
+        <div class="panel-body" style="padding:0;overflow-x:auto">
+          <table class="ads-table">
+            <thead>
+              <tr>
+                <th>Title</th><th>Type</th><th>Views Ordered</th><th>Delivered</th><th>Status</th><th>Cost</th>
+              </tr>
+            </thead>
+            <tbody id="ads-tbody">
+              <tr><td colspan="6" style="text-align:center;color:#aaa;padding:2rem">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS VIEW -->
+    <div class="view" id="view-analytics">
+      <div class="page-title">📊 Analytics</div>
+      <div class="panel">
+        <div class="panel-head"><h3>Campaign Performance</h3></div>
+        <div class="panel-body">
+          <div class="analytics-grid">
+            <div class="metric-card"><div class="metric-num" id="an-views">0</div><div class="metric-lbl">Total Views</div></div>
+            <div class="metric-card"><div class="metric-num" id="an-ads">0</div><div class="metric-lbl">Total Ads</div></div>
+            <div class="metric-card"><div class="metric-num" id="an-spent">₹0</div><div class="metric-lbl">Total Spent</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WALLET VIEW -->
+    <div class="view" id="view-wallet">
+      <div class="page-title">💳 Wallet</div>
+      <div class="panel">
+        <div class="panel-head"><h3>Account Balance</h3></div>
+        <div class="panel-body" style="text-align:center;padding:2.5rem">
+          <div style="font-size:3rem;margin-bottom:.5rem">💰</div>
+          <div style="font-size:2.5rem;font-weight:900;color:var(--red)">₹<span id="wallet-display">0.00</span></div>
+          <div style="color:#888;margin-top:.4rem;font-size:.9rem">Available Balance</div>
+          <button class="btn-submit" style="max-width:240px;margin:1.5rem auto 0" onclick="alert('Payment gateway coming soon!')">+ Add Funds</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // ── Auth guard ────────────────────────────────────────
+  async function init() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) { window.location.href = 'login.html'; return; }
+    loadStats(user);
+  }
+
+  // ── View switching ────────────────────────────────────
+  function switchView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    if (name === 'myads') loadMyAds();
+  }
+
+  // ── Load stats via RPC ───────────────────────────────
+  async function loadStats(user) {
+    const { data, error } = await db.rpc('get_advertiser_stats', { p_user_id: user.id });
+    if (error || !data || !data.success) {
+      // fallback: direct query
+      const { data: adv } = await db.from('advertisers').select('id,wallet_balance').eq('user_id', user.id).single();
+      if (!adv) return;
+      const bal = adv.wallet_balance || 0;
+      document.getElementById('wallet-bal').textContent     = bal.toFixed(2);
+      document.getElementById('wallet-display').textContent = bal.toFixed(2);
+      return;
+    }
+    const s = data;
+    const bal = parseFloat(s.wallet_balance) || 0;
+    document.getElementById('wallet-bal').textContent     = bal.toFixed(2);
+    document.getElementById('wallet-display').textContent = bal.toFixed(2);
+    document.getElementById('stat-ads').textContent    = s.total_ads || 0;
+    document.getElementById('stat-views').textContent  = Number(s.total_views || 0).toLocaleString();
+    document.getElementById('stat-active').textContent = s.active_ads || 0;
+    document.getElementById('stat-spent').textContent  = '₹' + parseFloat(s.total_spent || 0).toFixed(2);
+    document.getElementById('an-views').textContent    = Number(s.total_views || 0).toLocaleString();
+    document.getElementById('an-ads').textContent      = s.total_ads || 0;
+    document.getElementById('an-spent').textContent    = '₹' + parseFloat(s.total_spent || 0).toFixed(2);
+  }
+
+  // ── Load my ads ───────────────────────────────────────
+  async function loadMyAds() {
+    const { data: { user } } = await db.auth.getUser();
+    const { data: adv } = await db.from('advertisers').select('id').eq('user_id', user.id).single();
+    if (!adv) return;
+    const { data: ads } = await db.from('ads').select('*').eq('advertiser_id', adv.id).order('created_at', { ascending: false });
+    const tbody = document.getElementById('ads-tbody');
+    if (!ads || ads.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:2rem">No ads yet. Post your first ad!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = ads.map(a => `
+      <tr>
+        <td><strong>${a.title}</strong></td>
+        <td>${a.ad_type}</td>
+        <td>${(a.views_ordered||0).toLocaleString()}</td>
+        <td>${(a.views_delivered||0).toLocaleString()}</td>
+        <td><span class="status-badge status-${a.status}">${a.status}</span></td>
+        <td>₹${(a.budget_total||0).toFixed(2)}</td>
+      </tr>`).join('');
+  }
+
+  // ── Image preview ─────────────────────────────────────
+  function previewImg(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5*1024*1024) { alert('Max 5MB allowed.'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('img-preview').src = ev.target.result;
+      document.getElementById('img-preview').style.display = 'block';
+      document.getElementById('upload-placeholder').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Cost calculator ───────────────────────────────────
+  function recalc() {
+    const rate  = parseFloat(document.getElementById('ad-type').value) || 0.30;
+    const qty   = Math.max(1000, parseInt(document.getElementById('ad-views').value) || 1000);
+    const base  = (qty / 1000) * rate;
+    const gst   = base * 0.18;
+    document.getElementById('cost-display').textContent =
+      '₹' + base.toFixed(2) + ' + ₹' + gst.toFixed(2) + ' = ₹' + (base+gst).toFixed(2);
+  }
+
+  // ── Toggle upload vs link field + WhatsApp ───────────
+  function toggleWA() {
+    const rate   = parseFloat(document.getElementById('ad-type').value);
+    const isImg  = rate === 0.30;
+    const isVid  = rate === 0.50;
+    const isSoc  = rate === 0.80;
+    const isApp  = rate === 2.00;
+    const isLink = isSoc || isApp;
+
+    // Upload area: show for image & video
+    document.getElementById('upload-area').style.display  = isLink ? 'none' : 'block';
+
+    // Link field: show for social & app/web
+    document.getElementById('link-field').style.display   = isLink ? 'block' : 'none';
+    if (isLink) {
+      document.getElementById('link-label').textContent   = isSoc ? 'Paste Social Media Post Link' : 'Paste App / Website URL';
+      document.getElementById('link-hint').textContent    = isSoc
+        ? '🔗 e.g. your Instagram post, YouTube video, Facebook page link'
+        : '📱 e.g. Google Play / App Store link or your website URL';
+      document.getElementById('ad-link').placeholder      = isSoc ? 'https://instagram.com/p/...' : 'https://play.google.com/...';
+    } else {
+      document.getElementById('ad-link').value = '';
+    }
+
+    // WhatsApp: only for image & video
+    document.getElementById('wa-field').style.display = (isImg || isVid) ? 'flex' : 'none';
+    if (isLink) document.getElementById('ad-whatsapp').value = '';
+  }
+
+  // ── Submit ad ─────────────────────────────────────────
+  async function submitAd() {
+    const title   = document.getElementById('ad-title').value.trim();
+    const rate    = parseFloat(document.getElementById('ad-type').value);
+    const qty     = Math.max(1000, parseInt(document.getElementById('ad-views').value)||1000);
+    const target  = document.getElementById('ad-target').value;
+    const wa      = document.getElementById('ad-whatsapp').value.trim();
+    const base    = (qty/1000)*rate;
+    const gst     = base*0.18;
+
+    if (!title) { showAlert('post','Enter an ad title.','error'); return; }
+
+    const { data: { user } } = await db.auth.getUser();
+    const { data: adv } = await db.from('advertisers').select('id').eq('user_id', user.id).single();
+    if (!adv) { showAlert('post','Advertiser profile not found.','error'); return; }
+
+    const adTypes = { '0.3': 'image', '0.5': 'video', '0.8': 'social_link', '2': 'app_website' };
+    const adType  = adTypes[String(rate)] || 'image';
+
+    const link = document.getElementById('ad-link').value.trim();
+    const isLink = rate === 0.80 || rate === 2.00;
+    if (isLink && !link) { showAlert('post', 'Please paste your link.', 'error'); return; }
+
+    const payload = {
+      advertiser_id: adv.id, title, ad_type: adType,
+      target_area: target, views_ordered: qty, rate_per_1k: rate,
+      budget_base: base, budget_gst: gst, budget_total: base+gst,
+      content_url: link || null
+    };
+    if (wa) payload.whatsapp_number = wa.startsWith('+') ? wa : '+91' + wa.replace(/\D/g,'');
+
+    const { error } = await db.from('ads').insert(payload);
+
+    if (error) { showAlert('post', error.message, 'error'); return; }
+    showAlert('post', '✅ Ad submitted for review! You will be notified once approved.', 'success');
+    document.getElementById('ad-title').value = '';
+    document.getElementById('ad-whatsapp').value = '';
+    document.getElementById('ad-link').value = '';
+    document.getElementById('img-preview').style.display = 'none';
+    document.getElementById('upload-placeholder').style.display = 'block';
+    recalc();
+  }
+
+  function showAlert(view, msg, type) {
+    const el = document.getElementById('alert-' + view);
+    el.textContent = msg; el.className = 'alert ' + type;
+    setTimeout(() => { el.className = 'alert'; }, 5000);
+  }
+
+  // ── Drag & drop ───────────────────────────────────────
+  const ua = document.getElementById('upload-area');
+  ua.addEventListener('dragover', e => { e.preventDefault(); ua.style.borderColor='var(--red)'; });
+  ua.addEventListener('dragleave', () => { ua.style.borderColor=''; });
+  ua.addEventListener('drop', e => {
+    e.preventDefault(); ua.style.borderColor='';
+    const f = e.dataTransfer.files[0];
+    if (f) { const dt = new DataTransfer(); dt.items.add(f); document.getElementById('img-input').files = dt.files; previewImg({target:{files:[f]}}); }
+  });
+
+  // ── Logout ────────────────────────────────────────────
+  async function logout() {
+    await db.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  recalc();
+  init();
+</script>
+</body>
+</html>

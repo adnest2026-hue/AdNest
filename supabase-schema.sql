@@ -56,6 +56,7 @@ create table if not exists ads (
   budget_base     numeric(10,2) not null,
   budget_gst      numeric(10,2) not null,
   budget_total    numeric(10,2) not null,
+  whatsapp_number text,
   status          text not null default 'pending' check (status in ('pending', 'approved', 'active', 'paused', 'completed', 'rejected')),
   created_at      timestamptz default now(),
   approved_at     timestamptz,
@@ -115,36 +116,44 @@ alter table coin_transactions enable row level security;
 alter table payments          enable row level security;
 
 -- Users can read/update their own data
+drop policy if exists "users_own" on users;
 create policy "users_own" on users
   for all using (auth.uid() = id);
 
 -- Viewers see their own wallet
+drop policy if exists "wallet_own" on coin_wallets;
 create policy "wallet_own" on coin_wallets
   for all using (auth.uid() = user_id);
 
 -- Advertisers manage their own profile
+drop policy if exists "advertiser_own" on advertisers;
 create policy "advertiser_own" on advertisers
   for all using (auth.uid() = user_id);
 
 -- Advertisers manage their own ads
+drop policy if exists "ads_own" on ads;
 create policy "ads_own" on ads
   for all using (
     advertiser_id in (select id from advertisers where user_id = auth.uid())
   );
 
 -- Viewers see active ads
+drop policy if exists "ads_active_read" on ads;
 create policy "ads_active_read" on ads
   for select using (status = 'active');
 
 -- Viewers log their own views
+drop policy if exists "views_own" on ad_views;
 create policy "views_own" on ad_views
   for all using (auth.uid() = viewer_id);
 
 -- Users see their own coin history
+drop policy if exists "coin_tx_own" on coin_transactions;
 create policy "coin_tx_own" on coin_transactions
   for all using (auth.uid() = user_id);
 
 -- Advertisers see their own payments
+drop policy if exists "payments_own" on payments;
 create policy "payments_own" on payments
   for all using (
     advertiser_id in (select id from advertisers where user_id = auth.uid())

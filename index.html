@@ -233,35 +233,58 @@
     h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 800; margin-bottom: .5rem; }
     .subtitle { color: #666; margin-bottom: 2.5rem; font-size: 0.95rem; }
 
-    /* ── HOW IT WORKS ── */
-    #how { background: var(--gray); }
-    .steps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
+
+    /* ── PORTAL CARDS ── */
+    .portal-card {
+      position: relative; border-radius: 20px; overflow: hidden;
+      padding: 2rem 1.5rem; text-align: center;
+      border: 2px solid #eee; background: var(--white);
+      transition: transform .25s, box-shadow .25s, border-color .25s;
+      cursor: pointer; height: 100%;
     }
-    .step-card {
-      background: var(--white); border-radius: 16px;
-      padding: 1.5rem; text-align: center;
-      box-shadow: var(--shadow);
-      position: relative;
-      transition: transform .2s;
+    .portal-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,0.14); }
+    #portal-viewer:hover    { border-color: #25D366; }
+    #portal-advertiser:hover { border-color: var(--red); }
+
+    .portal-glow {
+      position: absolute; inset: 0; opacity: 0;
+      transition: opacity .3s; pointer-events: none;
     }
-    .step-card:hover { transform: translateY(-4px); }
-    .step-num {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: var(--red); color: var(--white);
-      font-weight: 900; font-size: 1.1rem;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 1rem;
+    #portal-viewer:hover    .portal-glow { opacity: 1; }
+    #portal-advertiser:hover .portal-glow { opacity: 1; }
+    .viewer-glow { background: radial-gradient(circle at 50% 0%, rgba(37,211,102,0.12), transparent 70%); }
+    .adv-glow    { background: radial-gradient(circle at 50% 0%, rgba(139,26,26,0.10), transparent 70%); }
+
+    .portal-icon { font-size: 3.5rem; margin-bottom: .8rem; line-height: 1; }
+
+    .portal-badge {
+      display: inline-block; border-radius: 20px;
+      padding: 3px 14px; font-size: .72rem; font-weight: 800;
+      letter-spacing: 1px; margin-bottom: .8rem;
     }
-    .step-icon { font-size: 2rem; margin-bottom: .8rem; }
-    .step-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
-    .step-card p { font-size: 0.85rem; color: #666; }
-    .arrow-right {
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; color: var(--red); font-weight: 900;
-      padding-top: 1.5rem;
+    .viewer-badge { background: #e8faf0; color: #25D366; }
+    .adv-badge    { background: #fff0f0; color: var(--red); }
+
+    .portal-card h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: .5rem; color: var(--dark); }
+    .portal-card p  { font-size: .84rem; color: #666; line-height: 1.6; margin-bottom: 1.1rem; }
+
+    .portal-perks {
+      list-style: none; text-align: left; margin-bottom: 1.4rem;
+      display: flex; flex-direction: column; gap: .4rem;
+    }
+    .portal-perks li { font-size: .82rem; color: #555; }
+
+    .portal-btn {
+      display: block; border-radius: 12px;
+      padding: .7rem; font-weight: 800; font-size: .88rem;
+      transition: opacity .2s;
+    }
+    .portal-btn:hover { opacity: .88; }
+    .viewer-btn { background: #25D366; color: #fff; }
+    .adv-btn    { background: var(--red); color: #fff; }
+
+    @media (max-width: 560px) {
+      #portals > .container > div:last-child { grid-template-columns: 1fr; }
     }
 
     /* ── AD TYPES ── */
@@ -556,25 +579,56 @@
     <div class="nav-logo">A</div>
     <span class="nav-title">Anaar</span>
   </a>
-  <ul class="nav-links">
-    <li><a href="#how">How It Works</a></li>
-    <li><a href="#ads">Ad Types</a></li>
-    <li><a href="#coins">Earn Coins</a></li>
-    <li><a href="#dashboard">Dashboard</a></li>
-    <li><a href="#register">Register</a></li>
-  </ul>
   <div class="nav-coin">&#8377; 400 <span>&#127873;</span></div>
-  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
 </nav>
-<div class="mobile-menu" id="mobileMenu">
-  <a href="#how" onclick="toggleMenu()">How It Works</a>
-  <a href="#ads" onclick="toggleMenu()">Ad Types</a>
-  <a href="#coins" onclick="toggleMenu()">Earn Coins</a>
-  <a href="#dashboard" onclick="toggleMenu()">Dashboard</a>
-  <a href="#register" onclick="toggleMenu()">Register</a>
-</div>
+
+<!-- ── PORTAL CHOOSER ── -->
+<section id="portals" style="background:var(--white);padding:3rem 1.5rem;">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div class="section-tag">GET STARTED</div>
+      <h2>Choose Your Portal</h2>
+      <p class="subtitle">Are you here to earn coins or grow your business?</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:780px;margin:0 auto;">
+
+      <!-- VIEWER CARD -->
+      <a href="viewer-dashboard.html" style="text-decoration:none;">
+        <div class="portal-card" id="portal-viewer">
+          <div class="portal-glow viewer-glow"></div>
+          <div class="portal-icon">👁️</div>
+          <div class="portal-badge viewer-badge">VIEWER</div>
+          <h3>Watch &amp; Earn</h3>
+          <p>Watch ads from local businesses and earn real coins. Convert coins to cash rewards instantly.</p>
+          <ul class="portal-perks">
+            <li>🪙 Earn up to 1000 coins per ad</li>
+            <li>💸 Redeem as real cash</li>
+            <li>📺 All ad types supported</li>
+          </ul>
+          <div class="portal-btn viewer-btn">Enter Viewer Dashboard →</div>
+        </div>
+      </a>
+
+      <!-- ADVERTISER CARD -->
+      <a href="advertiser-dashboard.html" style="text-decoration:none;">
+        <div class="portal-card" id="portal-advertiser">
+          <div class="portal-glow adv-glow"></div>
+          <div class="portal-icon">📢</div>
+          <div class="portal-badge adv-badge">ADVERTISER</div>
+          <h3>Advertise &amp; Grow</h3>
+          <p>Run targeted ads across pincodes, districts &amp; states. Reach real local customers fast.</p>
+          <ul class="portal-perks">
+            <li>🖼️ Image, Video &amp; Social ads</li>
+            <li>📍 Pincode to Nationwide targeting</li>
+            <li>💬 WhatsApp Business connect</li>
+          </ul>
+          <div class="portal-btn adv-btn">Enter Advertiser Dashboard →</div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+</section>
 
 <!-- ── HERO ── -->
 <header class="hero">
@@ -593,36 +647,96 @@
   </div>
 </header>
 
-<!-- ── HOW IT WORKS ── -->
-<section id="how">
+<!-- ── DASHBOARD PREVIEW ── -->
+<section id="dashboard">
   <div class="container">
-    <div class="section-tag">PROCESS</div>
-    <h2>How It Works</h2>
-    <p class="subtitle">From registration to your ad going live — 4 simple steps.</p>
-    <div class="steps-grid">
-      <div class="step-card">
-        <div class="step-icon">&#128241;</div>
-        <div class="step-num">1</div>
-        <h3>Open Anaar App</h3>
-        <p>Go to Settings → Profile → tap <strong>Advertiser</strong> to open the advertiser portal.</p>
+    <div class="section-tag">ADVERTISER PORTAL</div>
+    <h2>Your Dashboard</h2>
+    <p class="subtitle">A powerful self-serve portal to post, track and manage all your campaigns.</p>
+
+    <div class="dash-mockup">
+      <div class="dash-header">
+        <h3>&#128200; Advertiser Dashboard</h3>
+        <span class="dash-balance">Balance: ₹1,240</span>
       </div>
-      <div class="step-card">
-        <div class="step-icon">&#128242;</div>
-        <div class="step-num">2</div>
-        <h3>OTP Signup</h3>
-        <p>Enter your phone number. Verify with OTP. Your advertiser account is ready in seconds.</p>
+      <div class="dash-tabs">
+        <div class="dash-tab active">Post Ad</div>
+        <div class="dash-tab">My Ads</div>
+        <div class="dash-tab">Analytics</div>
+        <div class="dash-tab">Viewers</div>
+        <div class="dash-tab">Wallet</div>
       </div>
-      <div class="step-card">
-        <div class="step-icon">&#128203;</div>
-        <div class="step-num">3</div>
-        <h3>Choose Ad Type</h3>
-        <p>Select from Image, Video, Social Media Link, or App & Website promotion ads.</p>
-      </div>
-      <div class="step-card">
-        <div class="step-icon">&#128184;</div>
-        <div class="step-num">4</div>
-        <h3>Pay & Go Live</h3>
-        <p>Set your budget, add GST, pay via gateway. After review, your ad shows to customers.</p>
+      <div class="dash-body">
+
+        <!-- Image Slide Ad Upload -->
+        <div class="dash-upload" id="img-upload-area" onclick="document.getElementById('slide-input').click()" style="cursor:pointer;">
+          <input type="file" id="slide-input" accept="image/jpeg,image/png,image/webp"
+                 style="display:none" onchange="previewSlide(event)" />
+          <div id="slide-preview-wrap">
+            <div class="icon">🖼️</div>
+            <p><strong>Upload Image Slide Ad</strong></p>
+            <p style="margin-top:.3rem">JPG · PNG · WEBP &nbsp;|&nbsp; Max 5MB</p>
+            <p style="margin-top:.5rem;font-size:.78rem;color:#aaa">Click or drag &amp; drop to upload</p>
+          </div>
+          <img id="slide-preview" src="" alt="Preview"
+               style="display:none;max-width:100%;max-height:200px;border-radius:8px;margin-top:.5rem" />
+        </div>
+        <div id="slide-info" style="display:none;margin-top:-.8rem;margin-bottom:1rem;font-size:.8rem;color:#555;display:flex;justify-content:space-between;align-items:center;">
+          <span id="slide-filename"></span>
+          <button onclick="clearSlide(event)" style="background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;font-size:.8rem;">✕ Remove</button>
+        </div>
+
+        <div class="budget-calc">
+          <div class="budget-row">
+            <label>Ad Type</label>
+            <select>
+              <option>Image Slide – ₹0.30/1K</option>
+              <option>Video – ₹0.50/1K</option>
+              <option>Social Media – ₹0.80/1K</option>
+              <option>App/Web – ₹2.00/install</option>
+            </select>
+          </div>
+          <div class="budget-row">
+            <label>Views / Installs</label>
+            <input type="number" value="5000" min="1000" step="1000" />
+          </div>
+          <div class="budget-row">
+            <label>Target Area</label>
+            <select>
+              <option>Pincode</option>
+              <option>District</option>
+              <option>State</option>
+              <option>Nationwide</option>
+            </select>
+          </div>
+          <div class="budget-total">
+            <span>Estimated Cost + GST</span>
+            <span>₹ 1.50 + ₹0.27 = ₹1.77</span>
+          </div>
+        </div>
+
+        <button class="dash-btn" onclick="alert('Submit for review — Anaar team will approve within 24 hrs!')">
+          &#128640; Submit Ad for Review
+        </button>
+
+        <div style="margin-top:1.5rem;">
+          <div style="font-weight:700;margin-bottom:.8rem;font-size:.9rem;">&#128200; Campaign Analytics</div>
+          <div class="analytics-grid">
+            <div class="metric-card">
+              <div class="metric-num">4,820</div>
+              <div class="metric-lbl">Total Views</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-num">342</div>
+              <div class="metric-lbl">WhatsApp Clicks</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-num">₹1.45</div>
+              <div class="metric-lbl">Spent Today</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -810,89 +924,6 @@
   </div>
 </section>
 
-<!-- ── DASHBOARD PREVIEW ── -->
-<section id="dashboard">
-  <div class="container">
-    <div class="section-tag">ADVERTISER PORTAL</div>
-    <h2>Your Dashboard</h2>
-    <p class="subtitle">A powerful self-serve portal to post, track and manage all your campaigns.</p>
-
-    <div class="dash-mockup">
-      <div class="dash-header">
-        <h3>&#128200; Advertiser Dashboard</h3>
-        <span class="dash-balance">Balance: ₹1,240</span>
-      </div>
-      <div class="dash-tabs">
-        <div class="dash-tab active">Post Ad</div>
-        <div class="dash-tab">My Ads</div>
-        <div class="dash-tab">Analytics</div>
-        <div class="dash-tab">Viewers</div>
-        <div class="dash-tab">Wallet</div>
-      </div>
-      <div class="dash-body">
-
-        <div class="dash-upload">
-          <div class="icon">&#128247;</div>
-          <p><strong>Upload your creative</strong></p>
-          <p>Image (JPG) · Video (10–45s) · Social Link · App/Website URL</p>
-        </div>
-
-        <div class="budget-calc">
-          <div class="budget-row">
-            <label>Ad Type</label>
-            <select>
-              <option>Image Slide – ₹0.30/1K</option>
-              <option>Video – ₹0.50/1K</option>
-              <option>Social Media – ₹0.80/1K</option>
-              <option>App/Web – ₹2.00/install</option>
-            </select>
-          </div>
-          <div class="budget-row">
-            <label>Views / Installs</label>
-            <input type="number" value="5000" min="1000" step="1000" />
-          </div>
-          <div class="budget-row">
-            <label>Target Area</label>
-            <select>
-              <option>Pincode</option>
-              <option>District</option>
-              <option>State</option>
-              <option>Nationwide</option>
-            </select>
-          </div>
-          <div class="budget-total">
-            <span>Estimated Cost + GST</span>
-            <span>₹ 1.50 + ₹0.27 = ₹1.77</span>
-          </div>
-        </div>
-
-        <button class="dash-btn" onclick="alert('Submit for review — Anaar team will approve within 24 hrs!')">
-          &#128640; Submit Ad for Review
-        </button>
-
-        <div style="margin-top:1.5rem;">
-          <div style="font-weight:700;margin-bottom:.8rem;font-size:.9rem;">&#128200; Campaign Analytics</div>
-          <div class="analytics-grid">
-            <div class="metric-card">
-              <div class="metric-num">4,820</div>
-              <div class="metric-lbl">Total Views</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-num">342</div>
-              <div class="metric-lbl">WhatsApp Clicks</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-num">₹1.45</div>
-              <div class="metric-lbl">Spent Today</div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ── REGISTRATION ── -->
 <section id="register">
   <div class="container">
@@ -989,6 +1020,31 @@
 </footer>
 
 <script>
+  function previewSlide(e) { previewSlideFile(e.target.files[0]); }
+
+  function previewSlideFile(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('File too large. Max 5MB allowed.'); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      document.getElementById('slide-preview').src = ev.target.result;
+      document.getElementById('slide-preview').style.display = 'block';
+      document.getElementById('slide-preview-wrap').style.display = 'none';
+      document.getElementById('slide-filename').textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+      document.getElementById('slide-info').style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearSlide(e) {
+    e.stopPropagation();
+    document.getElementById('slide-input').value = '';
+    document.getElementById('slide-preview').src = '';
+    document.getElementById('slide-preview').style.display = 'none';
+    document.getElementById('slide-preview-wrap').style.display = 'block';
+    document.getElementById('slide-info').style.display = 'none';
+  }
+
   function toggleMenu() {
     var m = document.getElementById('mobileMenu');
     m.classList.toggle('open');
@@ -1027,6 +1083,52 @@
         this.classList.add('active');
       });
     });
+
+    // Drag & drop on image upload area
+    var area = document.getElementById('img-upload-area');
+    area.addEventListener('dragover', function(e) {
+      e.preventDefault(); area.style.borderColor = '#8B1A1A'; area.style.background = '#fff5f5';
+    });
+    area.addEventListener('dragleave', function() {
+      area.style.borderColor = ''; area.style.background = '';
+    });
+    area.addEventListener('drop', function(e) {
+      e.preventDefault(); area.style.borderColor = ''; area.style.background = '';
+      var file = e.dataTransfer.files[0];
+      if (file) { document.getElementById('slide-input').files; previewSlideFile(file); }
+    });
+  });
+</script>
+
+<!-- ── Email Verification Toast ── -->
+<div id="verify-toast" style="
+  display:none; position:fixed; top:70px; left:50%; transform:translateX(-50%);
+  background:#1a1a1a; color:#fff; padding:.9rem 1.5rem; border-radius:12px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.3); font-size:.9rem; font-weight:600;
+  z-index:9999; text-align:center; max-width:90vw;
+  border-left:4px solid #FFD700;">
+  🎉 <span id="toast-msg">Email verified! Welcome to Anaar.</span>
+</div>
+
+<script>
+  // Handle Supabase email verification redirect
+  const { createClient: _createClient } = supabase;
+  const _db = _createClient(
+    'https://lnlfmpyznaimyzrybimq.supabase.co',
+    'sb_publishable_uZtjIPPj-lOpWfSu-x6BbA_2qT6aIP8'
+  );
+
+  _db.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      const name = session.user.user_metadata?.name || session.user.email || 'there';
+      const role = session.user.user_metadata?.role || 'viewer';
+      const roleLabel = role === 'advertiser' ? 'Advertiser' : role === 'both' ? 'Viewer & Advertiser' : 'Viewer';
+      document.getElementById('toast-msg').textContent =
+        `✅ Welcome, ${name}! You're signed in as ${roleLabel}.`;
+      const toast = document.getElementById('verify-toast');
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 5000);
+    }
   });
 </script>
 

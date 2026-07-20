@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up – Anaar</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL  = 'https://lnlfmpyznaimyzrybimq.supabase.co';
+    const SUPABASE_ANON = 'sb_publishable_uZtjIPPj-lOpWfSu-x6BbA_2qT6aIP8';
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red:   #8B1A1A;
+      --red2:  #B22222;
+      --gold:  #FFD700;
+      --dark:  #1a1a1a;
+      --gray:  #f5f5f5;
+      --white: #ffffff;
+      --green: #27ae60;
+      --error: #e74c3c;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, var(--red) 0%, var(--red2) 60%, #5a0000 100%);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%; max-width: 440px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: var(--red);
+      padding: 2rem 2rem 1.5rem;
+      text-align: center;
+    }
+    .logo {
+      width: 60px; height: 60px; border-radius: 50%;
+      background: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1.6rem; color: var(--red);
+      margin: 0 auto 1rem;
+    }
+    .card-header h1 { color: var(--white); font-size: 1.5rem; font-weight: 800; }
+    .card-header p  { color: rgba(255,255,255,0.75); font-size: 0.85rem; margin-top: .3rem; }
+
+    /* Step dots */
+    .steps {
+      display: flex; justify-content: center; gap: 8px;
+      padding: 1.2rem 2rem 0;
+    }
+    .step-dot {
+      height: 8px; width: 8px; border-radius: 50%;
+      background: #ddd; transition: all .3s;
+    }
+    .step-dot.active { background: var(--red); width: 24px; border-radius: 4px; }
+    .step-dot.done   { background: var(--green); }
+
+    .card-body { padding: 1.5rem 2rem 2rem; }
+
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .step-title { font-size: 1.1rem; font-weight: 800; color: var(--dark); margin-bottom: .2rem; }
+    .step-sub   { font-size: 0.83rem; color: #777; margin-bottom: 1.4rem; }
+
+    /* Alert */
+    .alert {
+      border-radius: 8px; padding: .7rem 1rem;
+      font-size: 0.82rem; font-weight: 600;
+      margin-bottom: 1rem; display: none;
+    }
+    .alert.error   { background: #fdecea; color: var(--error); display: block; }
+    .alert.success { background: #eafaf1; color: var(--green);  display: block; }
+
+    /* Fields */
+    .field { margin-bottom: 1rem; }
+    label {
+      display: block; font-size: 0.82rem; font-weight: 600;
+      color: #444; margin-bottom: .4rem;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap .icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      font-size: 1rem; pointer-events: none;
+    }
+    input[type="email"],
+    input[type="password"],
+    input[type="text"],
+    input[type="tel"] {
+      width: 100%; padding: .72rem 1rem .72rem 2.4rem;
+      border: 1.5px solid #e0e0e0; border-radius: 10px;
+      font-size: 0.93rem; color: var(--dark);
+      outline: none; transition: border .2s; background: var(--white);
+    }
+    input:focus { border-color: var(--red); }
+
+    .toggle-pw {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      cursor: pointer; font-size: 1rem; user-select: none;
+    }
+
+    /* Password strength */
+    .pw-bar { height: 4px; border-radius: 2px; background: #eee; margin-top: .4rem; overflow: hidden; }
+    .pw-fill { height: 100%; width: 0; border-radius: 2px; transition: width .3s, background .3s; }
+    .pw-hint { font-size: 0.75rem; color: #999; margin-top: .3rem; }
+
+    /* Role cards */
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8rem; margin-bottom: 1rem; }
+    .role-both { grid-column: auto; }
+    @media (max-width: 400px) { .role-grid { grid-template-columns: 1fr 1fr; } .role-both { grid-column: 1 / -1; } }
+    .role-card {
+      border: 2px solid #e0e0e0; border-radius: 14px;
+      padding: 1.2rem .8rem; text-align: center;
+      cursor: pointer; transition: all .2s;
+    }
+    .role-card:hover   { border-color: var(--red); background: #fff8f8; }
+    .role-card.selected { border-color: var(--red); background: #fff0f0; }
+    .role-card .icon { font-size: 2.2rem; margin-bottom: .5rem; }
+    .role-card h3 { font-size: 0.9rem; font-weight: 700; color: var(--dark); }
+    .role-card p  { font-size: 0.75rem; color: #888; margin-top: .2rem; }
+
+    /* Checkbox */
+    .check-row {
+      display: flex; align-items: flex-start; gap: .5rem;
+      font-size: 0.8rem; color: #555; margin-top: .5rem;
+    }
+    .check-row input[type="checkbox"] { margin-top: 2px; accent-color: var(--red); flex-shrink: 0; }
+    .check-row a { color: var(--red); }
+
+    /* Buttons */
+    .btn-primary {
+      display: block; width: 100%;
+      background: var(--red); color: var(--white);
+      border: none; border-radius: 12px;
+      padding: .85rem; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s; margin-top: 1.2rem;
+    }
+    .btn-primary:hover    { opacity: .88; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Success */
+    .success-screen { text-align: center; padding: .5rem 0 1rem; }
+    .success-screen .big-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .success-screen h2 { font-size: 1.3rem; font-weight: 800; color: var(--dark); margin-bottom: .5rem; }
+    .success-screen p  { font-size: 0.88rem; color: #666; margin-bottom: 1.5rem; line-height: 1.6; }
+    .btn-gold {
+      display: inline-block; background: var(--gold); color: var(--red);
+      border: none; border-radius: 12px; padding: .75rem 2rem;
+      font-size: 0.95rem; font-weight: 800; cursor: pointer;
+      text-decoration: none;
+    }
+    .verify-note {
+      background: #fffbe6; border: 1px solid #ffe082;
+      border-radius: 8px; padding: .8rem 1rem;
+      font-size: 0.82rem; color: #795548; margin-bottom: 1rem;
+    }
+
+
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <div class="logo">A</div>
+    <h1>Create Account</h1>
+    <p>Join Anaar — Advertise or Earn</p>
+  </div>
+
+  <div class="steps">
+    <div class="step-dot active" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+  </div>
+
+  <div class="card-body">
+
+    <!-- STEP 1: Email & Password -->
+    <div class="step active" id="step-1">
+      <div class="step-title">Your account details</div>
+      <div class="step-sub">Use a valid email — you'll verify it after signup.</div>
+      <div id="alert-1" class="alert"></div>
+
+      <div class="field">
+        <label>Full Name</label>
+        <div class="input-wrap">
+          <span class="icon">👤</span>
+          <input type="text" id="name" placeholder="Your full name" autocomplete="name" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Email Address</label>
+        <div class="input-wrap">
+          <span class="icon">✉️</span>
+          <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <span class="icon">🔒</span>
+          <input type="password" id="password" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)" />
+          <span class="toggle-pw" onclick="togglePw('password')">👁️</span>
+        </div>
+        <div class="pw-bar"><div class="pw-fill" id="pw-fill"></div></div>
+        <div class="pw-hint" id="pw-hint">Use 8+ characters with numbers &amp; symbols</div>
+      </div>
+
+      <div class="field">
+        <label>Confirm Password</label>
+        <div class="input-wrap">
+          <span class="icon">🔒</span>
+          <input type="password" id="confirm-password" placeholder="Re-enter password" autocomplete="new-password" />
+          <span class="toggle-pw" onclick="togglePw('confirm-password')">👁️</span>
+        </div>
+      </div>
+
+<div class="check-row">
+        <input type="checkbox" id="terms" />
+        <label for="terms" style="margin:0">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+      </div>
+
+      <button class="btn-primary" id="btn-next1" onclick="submitStep1()">Continue</button>
+
+      <p style="text-align:center;margin-top:1.2rem;font-size:0.83rem;color:#888;">
+        Already have an account? <a href="login.html" style="color:var(--red);font-weight:700;text-decoration:none;">Sign In</a>
+      </p>
+
+    </div>
+
+    <!-- STEP 2: Role -->
+    <div class="step" id="step-2">
+      <div class="step-title">Choose your role</div>
+      <div class="step-sub">How will you use Anaar?</div>
+      <div id="alert-2" class="alert"></div>
+
+      <div class="role-grid">
+        <div class="role-card" id="role-viewer" onclick="selectRole('viewer')">
+          <div class="icon">👁️</div>
+          <h3>Viewer</h3>
+          <p>Watch ads &amp; earn coins</p>
+        </div>
+        <div class="role-card" id="role-advertiser" onclick="selectRole('advertiser')">
+          <div class="icon">📢</div>
+          <h3>Advertiser</h3>
+          <p>Run ads &amp; get results</p>
+        </div>
+        <div class="role-card role-both" id="role-both" onclick="selectRole('both')">
+          <div class="icon">⭐</div>
+          <h3>Both</h3>
+          <p>Earn coins &amp; run ads</p>
+        </div>
+      </div>
+
+
+      <button class="btn-primary" id="btn-signup" onclick="submitStep2()">Create Account</button>
+    </div>
+
+    <!-- STEP 3: Success / Verify Email -->
+    <div class="step" id="step-3">
+      <div class="success-screen">
+        <div class="big-icon">🎉</div>
+        <h2 id="success-title">Account Created!</h2>
+        <div class="verify-note">
+          📧 A verification email has been sent to <strong id="verify-email"></strong>. Please click the link to activate your account.
+        </div>
+        <p id="success-msg">Once verified, you can log in and start using Anaar.</p>
+        <a href="login.html" class="btn-gold">Go to Login</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let selectedRole = null;
+
+  // ── Step nav ──────────────────────────────────────────
+  function goToStep(n) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+    for (let i = 1; i <= 3; i++) {
+      const d = document.getElementById('dot-' + i);
+      d.classList.remove('active','done');
+      if (i < n) d.classList.add('done');
+      else if (i === n) d.classList.add('active');
+    }
+  }
+
+  function showAlert(step, msg, type) {
+    const el = document.getElementById('alert-' + step);
+    el.textContent = msg; el.className = 'alert ' + type;
+  }
+  function clearAlert(step) {
+    const el = document.getElementById('alert-' + step);
+    el.className = 'alert'; el.textContent = '';
+  }
+
+  // ── Password strength ─────────────────────────────────
+  function checkStrength(val) {
+    const fill = document.getElementById('pw-fill');
+    const hint = document.getElementById('pw-hint');
+    let score = 0;
+    if (val.length >= 8)          score++;
+    if (/[A-Z]/.test(val))        score++;
+    if (/[0-9]/.test(val))        score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    const colors = ['#e74c3c','#e67e22','#f1c40f','#27ae60'];
+    const labels = ['Weak','Fair','Good','Strong'];
+    const widths = ['25%','50%','75%','100%'];
+
+    if (val.length === 0) { fill.style.width = '0'; hint.textContent = 'Use 8+ characters with numbers & symbols'; return; }
+    const i = score - 1;
+    fill.style.width   = widths[i];
+    fill.style.background = colors[i];
+    hint.textContent   = labels[i];
+    hint.style.color   = colors[i];
+  }
+
+  // ── Toggle password visibility ────────────────────────
+  function togglePw(id) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  // ── Step 1: Validate & proceed ────────────────────────
+  function submitStep1() {
+    clearAlert(1);
+    const name     = document.getElementById('name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('confirm-password').value;
+    const terms    = document.getElementById('terms').checked;
+
+    if (!name)                       { showAlert(1,'Enter your full name.','error'); return; }
+    if (!email || !email.includes('@')) { showAlert(1,'Enter a valid email address.','error'); return; }
+    if (password.length < 8)         { showAlert(1,'Password must be at least 8 characters.','error'); return; }
+    if (password !== confirm)        { showAlert(1,'Passwords do not match.','error'); return; }
+    if (!terms)                      { showAlert(1,'Please accept the Terms of Service.','error'); return; }
+
+    goToStep(2);
+  }
+
+  // ── Role selection ────────────────────────────────────
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('role-viewer').classList.toggle('selected', role === 'viewer');
+    document.getElementById('role-advertiser').classList.toggle('selected', role === 'advertiser');
+    document.getElementById('role-both').classList.toggle('selected', role === 'both');
+  }
+
+  // ── Step 2: Sign up with Supabase ─────────────────────
+  async function submitStep2() {
+    clearAlert(2);
+    if (!selectedRole) { showAlert(2,'Please choose a role.','error'); return; }
+
+    const name     = document.getElementById('name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    const btn = document.getElementById('btn-signup');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+
+    // Sign up with Supabase Auth — redirect to index.html after email verification
+    const redirectTo = window.location.origin + window.location.pathname.replace('signup.html','') + 'index.html';
+    const { data, error } = await db.auth.signUp({
+      email, password,
+      options: {
+        data: { name, role: selectedRole },
+        emailRedirectTo: redirectTo
+      }
+    });
+
+    if (error) {
+      showAlert(2, error.message, 'error');
+      btn.disabled = false; btn.textContent = 'Create Account';
+      return;
+    }
+
+    const user = data.user;
+
+    // Save profile to users table
+    if (user) {
+      await db.from('users').upsert({ id: user.id, email, name, role: selectedRole });
+
+      // Create advertiser profile entry
+      if (selectedRole === 'advertiser' || selectedRole === 'both') {
+        await db.from('advertisers').upsert({ user_id: user.id });
+      }
+    }
+
+    // Show success
+    document.getElementById('verify-email').textContent = email;
+    const titles = { viewer: 'Account Created!', advertiser: 'Advertiser Account Created!', both: 'Full Access Account Created!' };
+    const msgs   = {
+      viewer:     'After verifying your email, you can watch ads and earn real coin rewards!',
+      advertiser: 'After verifying your email, you can post ads, set budgets and track performance.',
+      both:       'After verifying your email, you can both run ads and earn coins as a viewer!'
+    };
+    document.getElementById('success-title').textContent = titles[selectedRole];
+    document.getElementById('success-msg').textContent   = msgs[selectedRole];
+
+    goToStep(3);
+  }
+</script>
+</body>
+</html>
