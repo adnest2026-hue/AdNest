@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anaar – Incentive & Cashback Advertising Platform</title>
+
+  <!-- Supabase Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ── Supabase Config ──────────────────────────────────
+    // Replace these with your values from:
+    // Supabase Dashboard → Project Settings → API
+    const SUPABASE_URL  = 'YOUR_SUPABASE_PROJECT_URL';
+    const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY';
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    // ── Auth: OTP Phone Login ────────────────────────────
+    async function sendOTP(phone) {
+      const { error } = await db.auth.signInWithOtp({ phone });
+      if (error) { console.error('OTP error:', error.message); return false; }
+      return true;
+    }
+
+    async function verifyOTP(phone, token) {
+      const { data, error } = await db.auth.verifyOtp({ phone, token, type: 'sms' });
+      if (error) { console.error('Verify error:', error.message); return null; }
+      return data.user;
+    }
+
+    async function getUser() {
+      const { data: { user } } = await db.auth.getUser();
+      return user;
+    }
+
+    // ── Ads: Submit New Ad ───────────────────────────────
+    async function submitAd({ title, adType, contentUrl, targetArea, targetValue, viewsOrdered, ratePerK, budgetBase, budgetGst, budgetTotal }) {
+      const user = await getUser();
+      if (!user) return { error: 'Not logged in' };
+
+      const { data: adv } = await db.from('advertisers').select('id').eq('user_id', user.id).single();
+      if (!adv) return { error: 'No advertiser profile found' };
+
+      return db.from('ads').insert({
+        advertiser_id: adv.id,
+        title, ad_type: adType, content_url: contentUrl,
+        target_area: targetArea, target_value: targetValue,
+        views_ordered: viewsOrdered, rate_per_1k: ratePerK,
+        budget_base: budgetBase, budget_gst: budgetGst, budget_total: budgetTotal
+      });
+    }
+
+    // ── Ads: Fetch Active Ads for Viewer ────────────────
+    async function getActiveAds() {
+      const { data, error } = await db.from('ads').select('*').eq('status', 'active');
+      if (error) console.error(error);
+      return data || [];
+    }
+
+    // ── Coins: Earn Coins After Watching Ad ─────────────
+    async function earnCoins(adId, coins) {
+      const user = await getUser();
+      if (!user) return { error: 'Not logged in' };
+      return db.rpc('earn_coins_for_view', {
+        p_viewer_id: user.id,
+        p_ad_id: adId,
+        p_coins: coins
+      });
+    }
+
+    // ── Wallet: Get Coin Balance ─────────────────────────
+    async function getCoinBalance() {
+      const user = await getUser();
+      if (!user) return { coins: 0, cash_value: 0 };
+      const { data } = await db.from('coin_wallets').select('coins,cash_value').eq('user_id', user.id).single();
+      return data || { coins: 0, cash_value: 0 };
+    }
+
+    // ── Register Advertiser ──────────────────────────────
+    async function registerAdvertiser({ name, businessName, whatsappNumber }) {
+      const user = await getUser();
+      if (!user) return { error: 'Not logged in' };
+
+      await db.from('users').upsert({ id: user.id, phone: user.phone, name, role: 'advertiser' });
+      return db.from('advertisers').upsert({ user_id: user.id, business_name: businessName, whatsapp_number: whatsappNumber });
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #8B1A1A;
+      --red2:   #B22222;
+      --gold:   #F5C518;
+      --gold2:  #FFD700;
+      --dark:   #1a1a1a;
+      --gray:   #f4f4f4;
+      --white:  #ffffff;
+      --text:   #333333;
+      --green:  #27ae60;
+      --shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: var(--text);
+      background: var(--white);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 999;
+      background: var(--red);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem;
+      height: 60px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--gold2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1.1rem; color: var(--red);
+    }
+    .nav-title { color: var(--white); font-weight: 700; font-size: 1.2rem; }
+    .nav-coin {
+      background: var(--gold2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-weight: 700; font-size: 0.9rem;
+      color: var(--red);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .nav-links {
+      display: flex; gap: 1.2rem; list-style: none;
+    }
+    .nav-links a {
+      color: rgba(255,255,255,0.85); text-decoration: none;
+      font-size: 0.85rem; font-weight: 500;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--gold2); }
+
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      cursor: pointer; background: none; border: none; padding: 4px;
+    }
+    .hamburger span {
+      display: block; width: 24px; height: 2px;
+      background: var(--white); border-radius: 2px;
+      transition: all .3s;
+    }
+
+    .mobile-menu {
+      display: none;
+      background: var(--red2);
+      padding: 1rem 1.5rem;
+    }
+    .mobile-menu.open { display: block; }
+    .mobile-menu a {
+      display: block; color: var(--white); text-decoration: none;
+      padding: .5rem 0; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, var(--red) 0%, var(--red2) 60%, #5a0000 100%);
+      color: var(--white);
+      padding: 4rem 1.5rem 5rem;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--gold2); color: var(--red);
+      border-radius: 20px; padding: 4px 14px;
+      font-size: 0.8rem; font-weight: 700;
+      margin-bottom: 1.2rem; letter-spacing: .5px;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900; margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .hero h1 span { color: var(--gold2); }
+    .hero p {
+      font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+      opacity: .85; max-width: 600px; margin: 0 auto 2rem;
+    }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: .75rem 1.8rem; border-radius: 30px;
+      font-weight: 700; font-size: 0.95rem;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+      display: inline-block;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+    .btn-gold   { background: var(--gold2); color: var(--red); }
+    .btn-outline { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.6); }
+
+    .hero-stats {
+      display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;
+      margin-top: 3rem; padding-top: 2rem;
+      border-top: 1px solid rgba(255,255,255,0.15);
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.8rem; font-weight: 900; color: var(--gold2); }
+    .stat-lbl { font-size: 0.8rem; opacity: .7; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* ── SECTION WRAPPER ── */
+    section { padding: 4rem 1.5rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      display: inline-block; background: var(--gold2); color: var(--red);
+      border-radius: 4px; padding: 2px 10px; font-size: 0.75rem;
+      font-weight: 700; letter-spacing: .5px; margin-bottom: .8rem;
+    }
+    h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 800; margin-bottom: .5rem; }
+    .subtitle { color: #666; margin-bottom: 2.5rem; font-size: 0.95rem; }
+
+    /* ── HOW IT WORKS ── */
+    #how { background: var(--gray); }
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+    .step-card {
+      background: var(--white); border-radius: 16px;
+      padding: 1.5rem; text-align: center;
+      box-shadow: var(--shadow);
+      position: relative;
+      transition: transform .2s;
+    }
+    .step-card:hover { transform: translateY(-4px); }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--red); color: var(--white);
+      font-weight: 900; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .step-icon { font-size: 2rem; margin-bottom: .8rem; }
+    .step-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+    .step-card p { font-size: 0.85rem; color: #666; }
+    .arrow-right {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; color: var(--red); font-weight: 900;
+      padding-top: 1.5rem;
+    }
+
+    /* ── AD TYPES ── */
+    #ads { background: var(--white); }
+    .ads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+    .ad-card {
+      border-radius: 16px; overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: transform .2s;
+    }
+    .ad-card:hover { transform: translateY(-4px); }
+    .ad-header {
+      background: var(--gold2); padding: 1.2rem 1.5rem;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .ad-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--red); color: var(--white);
+      font-weight: 900; display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0;
+    }
+    .ad-header h3 { font-size: 1rem; font-weight: 800; color: var(--red); }
+    .ad-body { background: var(--white); padding: 1.2rem 1.5rem; }
+    .ad-price {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #fff8e1; border-radius: 8px;
+      padding: .6rem .9rem; margin-bottom: .8rem;
+    }
+    .ad-price .label { font-size: 0.75rem; color: #888; }
+    .ad-price .value { font-weight: 800; color: var(--red); font-size: 1rem; }
+    .ad-min {
+      font-size: 0.8rem; color: #555;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ad-min::before { content: '✓'; color: var(--green); font-weight: 700; }
+    .ad-desc { font-size: 0.82rem; color: #666; margin-top: .7rem; line-height: 1.5; }
+    .ad-tag {
+      display: inline-block; background: #f0f0f0;
+      border-radius: 4px; padding: 2px 8px;
+      font-size: 0.72rem; color: #555; margin-top: .5rem;
+    }
+
+    /* ── PRICING FLOW ── */
+    #pricing { background: var(--gray); }
+    .flow-box {
+      background: var(--white); border-radius: 16px;
+      padding: 2rem; box-shadow: var(--shadow);
+      max-width: 700px; margin: 0 auto;
+    }
+    .flow-step {
+      display: flex; gap: 1rem; align-items: flex-start;
+      padding: 1rem 0; border-bottom: 1px dashed #e0e0e0;
+    }
+    .flow-step:last-child { border-bottom: none; }
+    .flow-icon {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--red); color: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .flow-content h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: .2rem; }
+    .flow-content p { font-size: 0.85rem; color: #666; }
+    .flow-arrow {
+      text-align: center; font-size: 1.5rem; color: var(--red);
+      padding: .3rem 0;
+    }
+
+    /* ── COIN VALUE ── */
+    #coins { background: linear-gradient(135deg, var(--red), var(--red2)); color: var(--white); }
+    #coins h2, #coins .subtitle { color: var(--white); }
+    #coins .subtitle { opacity: .75; }
+    .coins-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+    .coin-card {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(8px);
+      border-radius: 16px; padding: 1.5rem;
+      transition: transform .2s, background .2s;
+    }
+    .coin-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.18); }
+    .coin-icon { font-size: 2.2rem; margin-bottom: .8rem; }
+    .coin-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .coin-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; padding: .3rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .coin-row:last-child { border: none; }
+    .coin-row .key { opacity: .75; }
+    .coin-row .val { font-weight: 700; color: var(--gold2); }
+    .coin-summary {
+      margin-top: 2.5rem;
+      background: rgba(255,255,255,0.1); border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .coin-summary-icon { font-size: 2rem; }
+    .coin-summary p { font-size: 0.88rem; opacity: .85; }
+    .coin-summary strong { color: var(--gold2); }
+
+    /* ── REGISTRATION ── */
+    #register { background: var(--white); }
+    .reg-flow {
+      display: flex; flex-direction: column; gap: 0;
+      max-width: 600px; margin: 0 auto;
+    }
+    .reg-step {
+      display: flex; gap: 1.2rem; align-items: flex-start;
+      padding-bottom: 1.5rem; position: relative;
+    }
+    .reg-step:not(:last-child)::after {
+      content: '';
+      position: absolute; left: 20px; top: 42px;
+      width: 2px; height: calc(100% - 12px);
+      background: #e0e0e0;
+    }
+    .reg-dot {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--gold2); color: var(--red);
+      font-weight: 900; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; position: relative; z-index: 1;
+      box-shadow: 0 0 0 4px #fff;
+    }
+    .reg-content { padding-top: .5rem; }
+    .reg-content h4 { font-weight: 700; margin-bottom: .3rem; }
+    .reg-content p { font-size: 0.85rem; color: #666; }
+    .reg-options {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: .5rem; margin-top: .7rem;
+    }
+    .reg-option {
+      background: #fff8e1; border: 1px solid var(--gold2);
+      border-radius: 8px; padding: .5rem .8rem;
+      font-size: 0.8rem; color: var(--red); font-weight: 600;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .reg-option::before { content: '✔'; color: var(--green); }
+
+    /* ── DASHBOARD PREVIEW ── */
+    #dashboard { background: var(--gray); }
+    .dash-mockup {
+      background: var(--white); border-radius: 20px;
+      box-shadow: var(--shadow); overflow: hidden;
+      max-width: 800px; margin: 0 auto;
+    }
+    .dash-header {
+      background: var(--red); color: var(--white);
+      padding: 1rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dash-header h3 { font-size: 1rem; font-weight: 700; }
+    .dash-balance {
+      background: var(--gold2); color: var(--red);
+      border-radius: 20px; padding: 3px 12px;
+      font-weight: 800; font-size: 0.85rem;
+    }
+    .dash-tabs {
+      display: flex; overflow-x: auto;
+      border-bottom: 1px solid #e0e0e0;
+      background: var(--white);
+    }
+    .dash-tab {
+      padding: .7rem 1.2rem; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      border-bottom: 3px solid transparent; color: #888;
+      transition: all .2s;
+    }
+    .dash-tab.active { color: var(--red); border-bottom-color: var(--red); }
+    .dash-body { padding: 1.5rem; }
+    .dash-upload {
+      border: 2px dashed var(--gold2); border-radius: 12px;
+      padding: 2rem; text-align: center; margin-bottom: 1.5rem;
+      background: #fffdf0;
+    }
+    .dash-upload .icon { font-size: 2.5rem; margin-bottom: .5rem; }
+    .dash-upload p { font-size: 0.85rem; color: #666; }
+    .budget-calc {
+      background: var(--gray); border-radius: 12px;
+      padding: 1.2rem; margin-bottom: 1rem;
+    }
+    .budget-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: .5rem;
+    }
+    .budget-row label { font-size: 0.83rem; color: #555; font-weight: 600; }
+    .budget-row input, .budget-row select {
+      width: 45%; padding: .4rem .7rem;
+      border: 1px solid #ddd; border-radius: 6px;
+      font-size: 0.83rem; background: var(--white);
+    }
+    .budget-total {
+      background: var(--red); color: var(--white);
+      border-radius: 8px; padding: .6rem 1rem;
+      display: flex; justify-content: space-between;
+      font-weight: 700; margin-top: .7rem;
+    }
+    .dash-btn {
+      display: block; width: 100%;
+      background: var(--gold2); color: var(--red);
+      border: none; border-radius: 10px; padding: .8rem;
+      font-weight: 800; font-size: 0.95rem; cursor: pointer;
+      transition: opacity .2s;
+    }
+    .dash-btn:hover { opacity: .85; }
+
+    /* ── ANALYTICS PREVIEW ── */
+    .analytics-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1rem; margin-top: 1rem;
+    }
+    .metric-card {
+      background: var(--white); border-radius: 10px;
+      padding: .9rem; text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .metric-num { font-size: 1.4rem; font-weight: 800; color: var(--red); }
+    .metric-lbl { font-size: 0.72rem; color: #888; margin-top: 2px; }
+
+    /* ── WHATSAPP ── */
+    #whatsapp { background: var(--white); }
+    .wa-card {
+      background: linear-gradient(135deg, #25D366, #128C7E);
+      color: var(--white); border-radius: 20px;
+      padding: 2.5rem; max-width: 700px; margin: 0 auto;
+      display: flex; gap: 2rem; align-items: center;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 30px rgba(37,211,102,0.3);
+    }
+    .wa-icon { font-size: 4rem; flex-shrink: 0; }
+    .wa-text h3 { font-size: 1.3rem; font-weight: 800; margin-bottom: .7rem; }
+    .wa-text p { font-size: 0.9rem; opacity: .9; line-height: 1.6; }
+    .wa-badge {
+      display: inline-block; margin-top: 1rem;
+      background: rgba(255,255,255,0.2); border-radius: 20px;
+      padding: 4px 14px; font-size: 0.8rem; font-weight: 700;
+    }
+
+    /* ── CTA ── */
+    #cta {
+      background: linear-gradient(135deg, var(--red), #5a0000);
+      color: var(--white); text-align: center;
+      padding: 5rem 1.5rem;
+    }
+    #cta h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin-bottom: 1rem; }
+    #cta p { opacity: .8; margin-bottom: 2rem; max-width: 500px; margin-inline: auto 2rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--dark); color: rgba(255,255,255,0.6);
+      padding: 2rem 1.5rem; text-align: center;
+      font-size: 0.82rem;
+    }
+    footer .brand { color: var(--gold2); font-weight: 700; font-size: 1rem; margin-bottom: .4rem; }
+    footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .hero { padding: 3rem 1rem 4rem; }
+      .analytics-grid { grid-template-columns: repeat(3,1fr); gap: .5rem; }
+      .wa-card { flex-direction: column; text-align: center; }
+      .reg-options { grid-template-columns: 1fr; }
+      .budget-row { flex-direction: column; align-items: flex-start; gap: .3rem; }
+      .budget-row input, .budget-row select { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      nav { padding: 0 1rem; }
+      section { padding: 3rem 1rem; }
+      .hero h1 { font-size: 1.6rem; }
+      .analytics-grid { grid-template-columns: 1fr 1fr; }
+      .metric-num { font-size: 1.1rem; }
+      .dash-tabs { font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="nav-logo">A</div>
+    <span class="nav-title">Anaar</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#ads">Ad Types</a></li>
+    <li><a href="#coins">Earn Coins</a></li>
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#register">Register</a></li>
+  </ul>
+  <div class="nav-coin">&#8377; 400 <span>&#127873;</span></div>
+  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#how" onclick="toggleMenu()">How It Works</a>
+  <a href="#ads" onclick="toggleMenu()">Ad Types</a>
+  <a href="#coins" onclick="toggleMenu()">Earn Coins</a>
+  <a href="#dashboard" onclick="toggleMenu()">Dashboard</a>
+  <a href="#register" onclick="toggleMenu()">Register</a>
+</div>
+
+<!-- ── HERO ── -->
+<header class="hero">
+  <div class="hero-badge">&#127881; Incentive & Cashback Platform</div>
+  <h1>Advertise Smarter.<br /><span>Viewers Earn More.</span></h1>
+  <p>Anaar connects local advertisers with real viewers — through image, video, social media & app promotion ads. Viewers earn coins; advertisers get results.</p>
+  <div class="hero-btns">
+    <a href="#register" class="btn btn-gold">Start Advertising</a>
+    <a href="#coins" class="btn btn-outline">How Coins Work</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">4</div><div class="stat-lbl">Ad Formats</div></div>
+    <div class="stat"><div class="stat-num">30ps</div><div class="stat-lbl">From ₹0.30/1K</div></div>
+    <div class="stat"><div class="stat-num">1000</div><div class="stat-lbl">Max Coins / Ad</div></div>
+    <div class="stat"><div class="stat-num">OTP</div><div class="stat-lbl">Secure Signup</div></div>
+  </div>
+</header>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how">
+  <div class="container">
+    <div class="section-tag">PROCESS</div>
+    <h2>How It Works</h2>
+    <p class="subtitle">From registration to your ad going live — 4 simple steps.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">&#128241;</div>
+        <div class="step-num">1</div>
+        <h3>Open Anaar App</h3>
+        <p>Go to Settings → Profile → tap <strong>Advertiser</strong> to open the advertiser portal.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">&#128242;</div>
+        <div class="step-num">2</div>
+        <h3>OTP Signup</h3>
+        <p>Enter your phone number. Verify with OTP. Your advertiser account is ready in seconds.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">&#128203;</div>
+        <div class="step-num">3</div>
+        <h3>Choose Ad Type</h3>
+        <p>Select from Image, Video, Social Media Link, or App & Website promotion ads.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">&#128184;</div>
+        <div class="step-num">4</div>
+        <h3>Pay & Go Live</h3>
+        <p>Set your budget, add GST, pay via gateway. After review, your ad shows to customers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── AD TYPES ── -->
+<section id="ads">
+  <div class="container">
+    <div class="section-tag">AD FORMATS</div>
+    <h2>Choose Your Ad Type</h2>
+    <p class="subtitle">Four powerful formats — pincode, district, state, or national targeting.</p>
+    <div class="ads-grid">
+
+      <div class="ad-card">
+        <div class="ad-header">
+          <div class="ad-num">1</div>
+          <h3>Image / Slide Ads</h3>
+        </div>
+        <div class="ad-body">
+          <div class="ad-price">
+            <div><div class="label">We collect</div><div class="value">₹0.30 / 1K views</div></div>
+            <div style="font-size:2rem">🖼️</div>
+          </div>
+          <div class="ad-min">Minimum 1,000 views per campaign</div>
+          <p class="ad-desc">JPG/PNG photo slides only. Best for local shops, real estate, schools, colleges & events.</p>
+          <span class="ad-tag">📍 Local / District / State</span>
+        </div>
+      </div>
+
+      <div class="ad-card">
+        <div class="ad-header">
+          <div class="ad-num">2</div>
+          <h3>Video Ads</h3>
+        </div>
+        <div class="ad-body">
+          <div class="ad-price">
+            <div><div class="label">We collect</div><div class="value">₹0.50 / 1K views</div></div>
+            <div style="font-size:2rem">🎬</div>
+          </div>
+          <div class="ad-min">10 to 45 seconds duration only</div>
+          <p class="ad-desc">Short video ads for real estate, schools, local businesses, political campaigns & family functions.</p>
+          <span class="ad-tag">🎯 High Engagement</span>
+        </div>
+      </div>
+
+      <div class="ad-card">
+        <div class="ad-header">
+          <div class="ad-num">3</div>
+          <h3>Social Media Link Ads</h3>
+        </div>
+        <div class="ad-body">
+          <div class="ad-price">
+            <div><div class="label">We collect</div><div class="value">₹0.80 / 1K likes</div></div>
+            <div style="font-size:2rem">📲</div>
+          </div>
+          <div class="ad-min">Per 1,000 likes or subscriptions</div>
+          <p class="ad-desc">Paste your social media post link. Drive real likes, shares & page subscriptions across platforms.</p>
+          <span class="ad-tag">🔗 Link Only</span>
+        </div>
+      </div>
+
+      <div class="ad-card">
+        <div class="ad-header">
+          <div class="ad-num">4</div>
+          <h3>App & Website Ads</h3>
+        </div>
+        <div class="ad-body">
+          <div class="ad-price">
+            <div><div class="label">We collect</div><div class="value">₹2.00 / install</div></div>
+            <div style="font-size:2rem">📱</div>
+          </div>
+          <div class="ad-min">Per confirmed installation</div>
+          <p class="ad-desc">Promote your app or website. Get real installs via WhatsApp-powered referrals and campaigns.</p>
+          <span class="ad-tag">💬 WhatsApp Integrated</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING FLOW ── -->
+<section id="pricing">
+  <div class="container">
+    <div class="section-tag">WORKFLOW</div>
+    <h2>Posting Your Ad – Step by Step</h2>
+    <p class="subtitle">Everything from upload to going live.</p>
+    <div class="flow-box">
+      <div class="flow-step">
+        <div class="flow-icon">&#128247;</div>
+        <div class="flow-content">
+          <h4>Upload Your Creative</h4>
+          <p>Upload image (JPG), video (10-45 sec), paste social media link, or share app/website URL.</p>
+        </div>
+      </div>
+      <div class="flow-arrow">&#8595;</div>
+      <div class="flow-step">
+        <div class="flow-icon">&#127919;</div>
+        <div class="flow-content">
+          <h4>Select Target Audience</h4>
+          <p>Choose targeting by Pincode, District, State, or Nationwide for wider reach.</p>
+        </div>
+      </div>
+      <div class="flow-arrow">&#8595;</div>
+      <div class="flow-step">
+        <div class="flow-icon">&#128184;</div>
+        <div class="flow-content">
+          <h4>Set Budget & Calculate</h4>
+          <p>Enter minimum 1,000 views/installs. See real-time cost calculation + GST before payment.</p>
+        </div>
+      </div>
+      <div class="flow-arrow">&#8595;</div>
+      <div class="flow-step">
+        <div class="flow-icon">&#128179;</div>
+        <div class="flow-content">
+          <h4>Pay via Payment Gateway</h4>
+          <p>Secure payment with GST. Top up your balance and confirm the campaign amount.</p>
+        </div>
+      </div>
+      <div class="flow-arrow">&#8595;</div>
+      <div class="flow-step">
+        <div class="flow-icon">&#9989;</div>
+        <div class="flow-content">
+          <h4>Review & Approval</h4>
+          <p>Our team reviews the ad. Once approved, it is shown to your targeted customers.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COIN VALUE ── -->
+<section id="coins">
+  <div class="container">
+    <div class="section-tag" style="background:var(--gold2);color:var(--red)">VIEWER REWARDS</div>
+    <h2>Coin Value System</h2>
+    <p class="subtitle">Viewers earn coins for every ad they watch. Coins are real money.</p>
+    <div class="coins-grid">
+
+      <div class="coin-card">
+        <div class="coin-icon">⭐</div>
+        <h3>Unity Ads</h3>
+        <div class="coin-row"><span class="key">Coins per view</span><span class="val">100 coins</span></div>
+        <div class="coin-row"><span class="key">Cash value</span><span class="val">5 paisa</span></div>
+        <div class="coin-row"><span class="key">Earn rate</span><span class="val">Standard</span></div>
+      </div>
+
+      <div class="coin-card">
+        <div class="coin-icon">🖼️</div>
+        <h3>Slide / Image Ads</h3>
+        <div class="coin-row"><span class="key">Advertiser pays</span><span class="val">30 ps/1K views</span></div>
+        <div class="coin-row"><span class="key">Viewer gets</span><span class="val">300 coins</span></div>
+        <div class="coin-row"><span class="key">Per-view value</span><span class="val">0.15 paisa</span></div>
+      </div>
+
+      <div class="coin-card">
+        <div class="coin-icon">🎬</div>
+        <h3>Video Ads</h3>
+        <div class="coin-row"><span class="key">Advertiser pays</span><span class="val">50 ps/1K views</span></div>
+        <div class="coin-row"><span class="key">Viewer gets</span><span class="val">400 coins</span></div>
+        <div class="coin-row"><span class="key">Per-view value</span><span class="val">0.20 paisa</span></div>
+      </div>
+
+      <div class="coin-card">
+        <div class="coin-icon">📲</div>
+        <h3>Social Media Ads</h3>
+        <div class="coin-row"><span class="key">Advertiser pays</span><span class="val">80 ps/1K</span></div>
+        <div class="coin-row"><span class="key">Viewer gets</span><span class="val">600 coins</span></div>
+        <div class="coin-row"><span class="key">Per-view value</span><span class="val">0.30 paisa</span></div>
+      </div>
+
+      <div class="coin-card">
+        <div class="coin-icon">📱</div>
+        <h3>App & Web Ads</h3>
+        <div class="coin-row"><span class="key">Advertiser pays</span><span class="val">₹2 / install</span></div>
+        <div class="coin-row"><span class="key">Viewer gets</span><span class="val">1000 coins</span></div>
+        <div class="coin-row"><span class="key">Per-install value</span><span class="val">0.50 paisa</span></div>
+      </div>
+
+    </div>
+    <div class="coin-summary">
+      <div class="coin-summary-icon">💡</div>
+      <p>The more coins you earn, the more cashback you accumulate. Coins convert to real cash rewards — <strong>watch more, earn more!</strong> Advertisers get analytics on viewers by pincode, name, and registered email.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── DASHBOARD PREVIEW ── -->
+<section id="dashboard">
+  <div class="container">
+    <div class="section-tag">ADVERTISER PORTAL</div>
+    <h2>Your Dashboard</h2>
+    <p class="subtitle">A powerful self-serve portal to post, track and manage all your campaigns.</p>
+
+    <div class="dash-mockup">
+      <div class="dash-header">
+        <h3>&#128200; Advertiser Dashboard</h3>
+        <span class="dash-balance">Balance: ₹1,240</span>
+      </div>
+      <div class="dash-tabs">
+        <div class="dash-tab active">Post Ad</div>
+        <div class="dash-tab">My Ads</div>
+        <div class="dash-tab">Analytics</div>
+        <div class="dash-tab">Viewers</div>
+        <div class="dash-tab">Wallet</div>
+      </div>
+      <div class="dash-body">
+
+        <div class="dash-upload">
+          <div class="icon">&#128247;</div>
+          <p><strong>Upload your creative</strong></p>
+          <p>Image (JPG) · Video (10–45s) · Social Link · App/Website URL</p>
+        </div>
+
+        <div class="budget-calc">
+          <div class="budget-row">
+            <label>Ad Type</label>
+            <select>
+              <option>Image Slide – ₹0.30/1K</option>
+              <option>Video – ₹0.50/1K</option>
+              <option>Social Media – ₹0.80/1K</option>
+              <option>App/Web – ₹2.00/install</option>
+            </select>
+          </div>
+          <div class="budget-row">
+            <label>Views / Installs</label>
+            <input type="number" value="5000" min="1000" step="1000" />
+          </div>
+          <div class="budget-row">
+            <label>Target Area</label>
+            <select>
+              <option>Pincode</option>
+              <option>District</option>
+              <option>State</option>
+              <option>Nationwide</option>
+            </select>
+          </div>
+          <div class="budget-total">
+            <span>Estimated Cost + GST</span>
+            <span>₹ 1.50 + ₹0.27 = ₹1.77</span>
+          </div>
+        </div>
+
+        <button class="dash-btn" onclick="alert('Submit for review — Anaar team will approve within 24 hrs!')">
+          &#128640; Submit Ad for Review
+        </button>
+
+        <div style="margin-top:1.5rem;">
+          <div style="font-weight:700;margin-bottom:.8rem;font-size:.9rem;">&#128200; Campaign Analytics</div>
+          <div class="analytics-grid">
+            <div class="metric-card">
+              <div class="metric-num">4,820</div>
+              <div class="metric-lbl">Total Views</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-num">342</div>
+              <div class="metric-lbl">WhatsApp Clicks</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-num">₹1.45</div>
+              <div class="metric-lbl">Spent Today</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── REGISTRATION ── -->
+<section id="register">
+  <div class="container">
+    <div class="section-tag">SIGN UP</div>
+    <h2>Register as Advertiser</h2>
+    <p class="subtitle">Quick phone-based signup — no email needed to start.</p>
+    <div class="reg-flow">
+
+      <div class="reg-step">
+        <div class="reg-dot">1</div>
+        <div class="reg-content">
+          <h4>Open Anaar App → Settings → Profile</h4>
+          <p>Tap <strong>Advertiser</strong> under your profile options. This opens a separate advertiser window.</p>
+        </div>
+      </div>
+
+      <div class="reg-step">
+        <div class="reg-dot">2</div>
+        <div class="reg-content">
+          <h4>Enter Phone Number</h4>
+          <p>Only your mobile number is needed. You'll receive a one-time password (OTP) to verify.</p>
+        </div>
+      </div>
+
+      <div class="reg-step">
+        <div class="reg-dot">3</div>
+        <div class="reg-content">
+          <h4>Complete OTP Verification</h4>
+          <p>Enter the OTP from your SMS. Verification is instant and secure.</p>
+        </div>
+      </div>
+
+      <div class="reg-step">
+        <div class="reg-dot">4</div>
+        <div class="reg-content">
+          <h4>Choose Your Ad Category</h4>
+          <p>Tell us what type of advertising you want to run:</p>
+          <div class="reg-options">
+            <div class="reg-option">Image Slide Ads</div>
+            <div class="reg-option">Video Ads (10–45s)</div>
+            <div class="reg-option">Social Media Link</div>
+            <div class="reg-option">App & Website Promo</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reg-step">
+        <div class="reg-dot">✓</div>
+        <div class="reg-content">
+          <h4>Registration Complete!</h4>
+          <p>You can now access your advertiser dashboard, post ads, set budgets and track performance.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── WHATSAPP ── -->
+<section id="whatsapp">
+  <div class="container">
+    <div class="section-tag">INTEGRATION</div>
+    <h2>WhatsApp Business Connect</h2>
+    <p class="subtitle">Every ad is linked directly to your WhatsApp Business number.</p>
+    <div class="wa-card">
+      <div class="wa-icon">&#128172;</div>
+      <div class="wa-text">
+        <h3>Tap → Connect → Get Business Instantly</h3>
+        <p>Each advertisement includes a WhatsApp icon. When customers are interested, they tap it to connect directly with your WhatsApp Business account — no calls, no delays. You receive business enquiries from every viewer across pincodes, districts and states.</p>
+        <span class="wa-badge">&#9989; Available on all 4 ad formats</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="cta">
+  <div class="container" style="text-align:center">
+    <div class="section-tag" style="background:var(--gold2);color:var(--red)">GET STARTED</div>
+    <h2>Ready to Grow Your Business?</h2>
+    <p>Join thousands of local advertisers on Anaar. Start with as low as ₹0.30 per 1,000 views.</p>
+    <div class="hero-btns" style="justify-content:center;margin-top:1.5rem;">
+      <a href="#register" class="btn btn-gold">Register as Advertiser</a>
+      <a href="#coins" class="btn btn-outline">View Coin Rewards</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="brand">&#127819; Anaar – Incentive & Cashback</div>
+  <p>Backend & Integration Platform · All ad types subject to review and approval</p>
+  <p style="margin-top:.5rem;">&#169; 2026 Anaar · <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Support</a></p>
+</footer>
+
+<script>
+  function toggleMenu() {
+    var m = document.getElementById('mobileMenu');
+    m.classList.toggle('open');
+  }
+
+  // Live budget calculator
+  var adRates = { 0: 0.30, 1: 0.50, 2: 0.80, 3: 2.00 };
+  var adLabels = { 0: '1K views', 1: '1K views', 2: '1K likes', 3: 'install' };
+
+  function recalc() {
+    var sel = document.querySelector('.budget-calc select');
+    var inp = document.querySelector('.budget-calc input');
+    var tot = document.querySelector('.budget-total span:last-child');
+    if (!sel || !inp || !tot) return;
+
+    var idx  = sel.selectedIndex;
+    var qty  = Math.max(1000, parseInt(inp.value) || 1000);
+    var rate = adRates[idx];
+    var base = (qty / 1000) * rate;
+    var gst  = base * 0.18;
+    var grand = base + gst;
+
+    tot.textContent = '₹' + base.toFixed(2) + ' + ₹' + gst.toFixed(2) + ' GST = ₹' + grand.toFixed(2);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var sel = document.querySelector('.budget-calc select');
+    var inp = document.querySelector('.budget-calc input');
+    if (sel) sel.addEventListener('change', recalc);
+    if (inp) inp.addEventListener('input', recalc);
+
+    // Tab switching
+    document.querySelectorAll('.dash-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.remove('active'); });
+        this.classList.add('active');
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
